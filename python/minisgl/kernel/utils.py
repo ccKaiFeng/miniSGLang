@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件封装 TVM FFI 的 C++/CUDA 扩展加载。
+#
+# load_aot() 用于加载 csrc/src 下的 AOT 扩展；load_jit() 用于把 csrc/jit 下的
+# CUDA/C++ 模板 kernel 按运行时参数即时编译成可调用 module。
+
 import pathlib
 from typing import TYPE_CHECKING, List, NamedTuple, Tuple, TypeAlias, Union
 
@@ -15,11 +20,15 @@ CPP_TEMPLATE_TYPE: TypeAlias = Union[int, float, bool]
 
 
 class CppArgList(list[str]):
+    """C++ 模板参数列表，转字符串时用逗号拼接。"""
+
     def __str__(self) -> str:
         return ", ".join(self)
 
 
 class KernelConfig(NamedTuple):
+    """JIT CUDA kernel 的基础编译/launch 配置。"""
+
     num_threads: int
     max_occupancy: int
     use_pdl: bool
@@ -31,15 +40,21 @@ class KernelConfig(NamedTuple):
 
 
 def _make_name(*args: str) -> str:
+    """生成 TVM FFI module 名字。"""
+
     return "minisgl__" + "_".join(str(arg) for arg in args)
 
 
 def _make_wrapper(tup: Tuple[str, str]) -> str:
+    """生成 TVM_FFI_DLL_EXPORT_TYPED_FUNC 包装代码。"""
+
     export_name, kernel_name = tup
     return f"TVM_FFI_DLL_EXPORT_TYPED_FUNC({export_name}, ({kernel_name}));"
 
 
 def make_cpp_args(*args: CPP_TEMPLATE_TYPE) -> CppArgList:
+    """把 Python 参数转换成 C++ 模板参数字符串。"""
+
     def _convert(arg: CPP_TEMPLATE_TYPE) -> str:
         if isinstance(arg, bool):
             return "true" if arg else "false"
@@ -60,6 +75,8 @@ def load_aot(
     extra_include_paths: List[str] | None = None,
     build_directory: str | None = None,
 ) -> Module:
+    """加载 csrc/src 下预先写好的 C++/CUDA 扩展。"""
+
     from tvm_ffi.cpp import load
 
     cpp_files = cpp_files or []
@@ -96,6 +113,8 @@ def load_jit(
     extra_include_paths: List[str] | None = None,
     build_directory: str | None = None,
 ) -> Module:
+    """把 csrc/jit 下的 kernel 文件 inline include 后即时编译。"""
+
     from tvm_ffi.cpp import load_inline
 
     cpp_files = cpp_files or []

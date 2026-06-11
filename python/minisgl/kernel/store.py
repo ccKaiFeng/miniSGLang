@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# 这个文件是 csrc/jit/store.cu 的 Python wrapper。
+#
+# store_cache() 用于把 attention 当前算出的 k/v 写入全局 KV cache 的物理位置。
+
 import functools
 from typing import TYPE_CHECKING
 
@@ -18,6 +22,8 @@ def _jit_store_module(
     *,
     config: KernelConfig = DEFAULT_INDEX_KERNEL_CONFIG,
 ) -> Module:
+    """按单个 KV 元素字节数 JIT 编译并缓存 store CUDA module。"""
+
     args = make_cpp_args(element_size, *config)
     return load_jit(
         "store",
@@ -34,6 +40,8 @@ def store_cache(
     k: torch.Tensor,
     v: torch.Tensor,
 ) -> None:
+    """把一批 k/v 写入 k_cache/v_cache 的 indices 位置。"""
+
     num_tokens = k_cache.shape[0]
     k_cache = k_cache.view(num_tokens, -1)
     v_cache = v_cache.view(num_tokens, -1)

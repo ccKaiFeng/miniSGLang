@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件统一初始化 miniSGLang 的日志格式。
+#
+# 日志会带时间戳、可选 pid、可选 TP rank，并对不同等级使用颜色，便于多进程
+# server 调试。
+
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -15,13 +20,15 @@ def init_logger(
     use_pid: bool | None = None,
     use_tp_rank: bool | None = None,
 ):
-    """Initialize the logger for the module with colors and pretty formatting."""
+    """初始化一个带颜色和固定格式的 logger。"""
+
     import logging
     import os
     import sys
 
     global _LOG_LEVEL
     if _LOG_LEVEL is None:
+        # LOG_LEVEL 环境变量可以覆盖默认 INFO。
         LEVEL_MAP = {
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
@@ -43,6 +50,7 @@ def init_logger(
         use_pid = os.getenv("LOG_PID", "0").lower() in ("1", "true", "yes")
 
     if use_pid:
+        # 多进程调试时可以打开 LOG_PID，看清每条日志来自哪个进程。
         pid = os.getpid()
         suffix = f"|pid={pid}{suffix}"
 
@@ -50,7 +58,7 @@ def init_logger(
 
     # Color formatter class
     class ColorFormatter(logging.Formatter):
-        """Formatter with colors and pretty output"""
+        """给日志等级上色的 formatter。"""
 
         # ANSI color codes
         COLORS = {
@@ -64,6 +72,8 @@ def init_logger(
         BOLD = "\033[1m"
 
         def format(self, record):
+            """把一条 logging record 格式化成最终字符串。"""
+
             from minisgl.distributed import try_get_tp_info
 
             # Format timestamp like SGLang: [YYYY-MM-DD|HH:MM:SS|pid=1234]

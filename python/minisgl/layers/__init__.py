@@ -1,3 +1,5 @@
+# layers 包导出构建 LLM 所需的基础算子层。
+
 from .activation import gelu_and_mul, silu_and_mul
 from .attention import AttentionLayer
 from .base import BaseOP, OPList, StateLessOP

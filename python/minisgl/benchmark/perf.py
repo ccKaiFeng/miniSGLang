@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# 这个文件提供 CUDA kernel 性能测试工具。
+
 from typing import Any, Callable, Dict, Tuple
 
 from minisgl.utils import init_logger
@@ -14,6 +16,8 @@ def perf_cuda(
     repetitions: int = 10,
     cuda_graph_repetitions: int | None = 10,
 ) -> float:
+    """使用 CUDA Event 测量函数 f 的平均执行时间，单位 ms。"""
+
     import torch
 
     assert repetitions > 0
@@ -60,6 +64,8 @@ def compare_memory_kernel_perf(
     extra_kwargs: Dict[str, Any] | None = None,
     need_latency: bool = True,
 ) -> Tuple[float, float]:
+    """比较 baseline 和 our_impl 的带宽/延迟。"""
+
     extra_kwargs = extra_kwargs or {}
 
     dur = perf_cuda(baseline, **extra_kwargs)

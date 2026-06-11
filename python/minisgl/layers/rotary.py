@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件实现 RoPE(Rotary Position Embedding，旋转位置编码)。
+#
+# RoPE 会把 token 的位置编码进 query/key，attention 后就能感知 token 顺序。
+# 不同模型可能使用默认 RoPE、Llama3 scaling 或 Yarn scaling，本文件统一处理。
+
 import functools
 import math
 from typing import Any, Callable, Dict, Tuple
@@ -10,6 +15,8 @@ from .base import StateLessOP
 
 
 class RotaryEmbedding(StateLessOP):
+    """RoPE cache 和应用逻辑。"""
+
     def __init__(
         self,
         head_size: int,
@@ -18,6 +25,8 @@ class RotaryEmbedding(StateLessOP):
         base: float,
         post_process: None | Callable[[torch.Tensor], torch.Tensor] = None,
     ) -> None:
+        """预计算 cos/sin cache。"""
+
         super().__init__()
         self.head_size = head_size
         assert rotary_dim == head_size
@@ -42,6 +51,8 @@ class RotaryEmbedding(StateLessOP):
         query: torch.Tensor,
         key: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """按 positions 对 query/key 原地应用 RoPE。"""
+
         self.apply_rope_with_cos_sin_cache_inplace(
             positions=positions,
             query=query,
@@ -59,6 +70,8 @@ def _get_rope(
     base: float,
     rope_scaling: Dict[str, Any] | None = None,
 ) -> RotaryEmbedding:
+    """根据 rope_scaling 创建具体 RoPE 对象。"""
+
     if rope_scaling is None:
         return RotaryEmbedding(head_dim, rotary_dim, max_position, base)
     # need to test some cases:
@@ -118,6 +131,8 @@ _ROPE_DEVICE: torch.device | None = None
 
 
 def set_rope_device(device: torch.device):
+    """指定 meta device 场景下 RoPE 实际创建在哪个设备。"""
+
     global _ROPE_DEVICE
     _ROPE_DEVICE = device
 
@@ -130,6 +145,11 @@ def get_rope(
     base: float,
     rope_scaling: Tuple[Tuple[str, Any], ...] | None = None,
 ) -> RotaryEmbedding:
+    """带缓存的 RoPE factory。
+
+    相同参数的 RoPE 只创建一次，避免每层重复预计算 cos/sin cache。
+    """
+
     rope_map = dict(rope_scaling) if rope_scaling is not None else None
     t = torch.tensor([])
     if t.device == torch.device("meta"):

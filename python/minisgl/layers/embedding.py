@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# 这个文件实现词表并行 embedding 和 LM head。
+#
+# 词表很大时，每个 TP rank 只保存一段 vocab 的 embedding 权重。输入 token
+# 如果落在本 rank 的 vocab 范围内，就取出对应向量；否则该 rank 输出 0。
+# 最后通过 all_reduce 把所有 rank 的结果合并。
+
 from typing import Dict
 
 import torch
@@ -12,11 +18,15 @@ from .base import BaseOP
 
 
 class VocabParallelEmbedding(BaseOP):
+    """按 vocab 维度切分的 embedding 层。"""
+
     def __init__(
         self,
         num_embeddings: int,
         embedding_dim: int,
     ):
+        """计算本 TP rank 负责的 vocab 范围，并创建局部 embedding 权重。"""
+
         super().__init__()
         tp_info = get_tp_info()
         tp_rank = tp_info.rank
@@ -31,6 +41,8 @@ class VocabParallelEmbedding(BaseOP):
 
     @nvtx_annotate("Embedding")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """把 token id 转成 hidden vector。"""
+
         from minisgl.kernel import indexing
 
         y = indexing(
@@ -43,6 +55,8 @@ class VocabParallelEmbedding(BaseOP):
 
 
 class ParallelLMHead(VocabParallelEmbedding):
+    """并行 LM head，把 hidden states 投影回 vocab logits。"""
+
     def __init__(
         self,
         num_embeddings: int,
@@ -51,6 +65,11 @@ class ParallelLMHead(VocabParallelEmbedding):
         tie_word_embeddings: bool = False,
         tied_embedding: VocabParallelEmbedding | None = None,
     ):
+        """创建 LM head。
+
+        tie_word_embeddings=True 时，lm_head 复用 embedding 权重，不再单独加载。
+        """
+
         super().__init__(num_embeddings, embedding_dim)
         self.bias = torch.empty(self.num_embeddings_tp) if bias else None
         self.tied_embedding = tied_embedding
@@ -63,6 +82,8 @@ class ParallelLMHead(VocabParallelEmbedding):
         prefix: str = "",
         _internal: bool = False,
     ) -> None:
+        """加载 LM head 权重；如果和 embedding 绑权重，则跳过重复权重。"""
+
         if not self.tied_embedding:
             return super().load_state_dict(state_dict, prefix=prefix, _internal=_internal)
         else:
@@ -80,12 +101,20 @@ class ParallelLMHead(VocabParallelEmbedding):
         prefix: str = "",
         result: Dict[str, torch.Tensor] | None = None,
     ) -> Dict[str, torch.Tensor]:
+        """导出 LM head 权重；绑权重时不重复导出。"""
+
         if not self.tied_embedding:
             return super().state_dict(prefix=prefix, result=result)
         return {} if result is None else result
 
     @nvtx_annotate("LMHead")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """计算 vocab logits。
+
+        prefill 阶段只需要每个请求最后一个 token 的 logits；decode 阶段每个
+        请求本来就只有一个新 token。
+        """
+
         ctx = get_global_ctx()
         batch = ctx.batch
         bs = batch.size

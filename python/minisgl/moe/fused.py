@@ -1,6 +1,14 @@
 import functools
 from typing import Dict, Tuple
 
+# 这个文件实现 fused MoE backend。
+#
+# 主要流程：
+# 1. fused_topk() 根据 router logits 选出每个 token 的 top-k expert；
+# 2. moe_align_block_size() 把 token 按 expert 分组并按 block size padding；
+# 3. fused_experts_impl() 调用 Triton kernel 执行 expert GEMM；
+# 4. FusedMoe.forward() 串起完整 MoE 计算。
+
 import torch
 from minisgl.moe import BaseMoeBackend
 from minisgl.utils import div_ceil
@@ -13,6 +21,8 @@ def fused_topk(
     renormalize: bool,
     num_token_non_padded: torch.Tensor | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """根据 router logits 选择每个 token 的 top-k expert。"""
+
     from sgl_kernel import topk_softmax
 
     assert hidden_states.shape[0] == gating_output.shape[0], "Number of tokens mismatch"
@@ -31,43 +41,8 @@ def fused_topk(
 def moe_align_block_size(
     topk_ids: torch.Tensor, block_size: int, num_experts: int
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """
-    Aligns the token distribution across experts to be compatible with block
-    size for matrix multiplication.
+    """把 token 按 expert 分组，并 padding 到 block_size 对齐。"""
 
-    Parameters:
-    - topk_ids: A tensor of shape [total_tokens, top_k] representing the
-        top-k expert indices for each token.
-    - block_size: The block size used in block matrix multiplication.
-    - num_experts: The total number of experts.
-
-    Returns:
-    - sorted_token_ids: A tensor containing the sorted token indices according
-        to their allocated expert.
-    - expert_ids: A tensor indicating the assigned expert index for each block.
-    - num_tokens_post_padded: The total number of tokens after padding,
-        ensuring divisibility by block_size.
-
-    This function pads the number of tokens that each expert needs to process
-    so that it is divisible by block_size.
-    Padding ensures that during block matrix multiplication, the dimensions
-    align correctly.
-
-    Example:
-    Given topk_ids = [[2, 3, 4], [1, 2, 4], [1, 3, 4], [1, 2, 3]],
-    block_size = 4, and num_experts = 4:
-    - We initially have 12 tokens (after repeating 'top_k' times) and 4 experts,
-        with each expert needing to process 3 tokens.
-    - As block_size is 4, we pad 1 token for each expert.
-    - First, flatten topk_ids to [2, 3, 4, 1, 2, 4, 1, 3, 4, 1, 2, 3].
-    - Then append padding tokens [12, 12, 12, 12] for each block.
-    - After sorting by expert index, we obtain token_ids
-        [3, 6, 9, 12, 0, 4, 10, 12, 1, 7, 11, 12, 2, 5, 8, 12].
-        Tokens 12 are non-existent (padding) and are ignored in
-        the subsequent matrix multiplication.
-    - The padding ensures that the total number of tokens is now divisible
-        by block_size for proper block matrix operations.
-    """
     from sgl_kernel import moe_align_block_size as sgl_moe_align_block_size
 
     max_num_tokens_padded = topk_ids.numel() + (num_experts + 1) * (block_size - 1)
@@ -96,6 +71,7 @@ def get_default_config(
     K: int,
     topk: int,
 ) -> Dict[str, int]:
+    """根据矩阵尺寸返回一组默认 Triton block 配置。"""
 
     config = {
         "BLOCK_SIZE_M": 64,

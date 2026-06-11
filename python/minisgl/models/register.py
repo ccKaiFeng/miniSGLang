@@ -1,5 +1,10 @@
 import importlib
 
+# 这个文件根据 HuggingFace config 中的 architecture 名称选择具体模型类。
+#
+# 例如 architecture 为 "Qwen3ForCausalLM" 时，会动态导入 .qwen3 里的
+# Qwen3ForCausalLM。这样 Engine 不需要写一堆 if/else。
+
 from .config import ModelConfig
 
 _MODEL_REGISTRY = {
@@ -13,6 +18,8 @@ _MODEL_REGISTRY = {
 
 
 def get_model_class(model_architecture: str, model_config: ModelConfig):
+    """创建指定 architecture 对应的模型对象。"""
+
     if model_architecture not in _MODEL_REGISTRY:
         raise ValueError(f"Model architecture {model_architecture} not supported")
     module_path, class_name = _MODEL_REGISTRY[model_architecture]

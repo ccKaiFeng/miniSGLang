@@ -1,5 +1,10 @@
 from typing import Any, Dict
 
+# 这个文件是 Triton MoE kernel 的 Python 调用封装。
+#
+# moe/fused.py 负责准备 token/expert 排列和参数，本文件负责真正 launch Triton
+# kernel，包括 fused expert GEMM 和 top-k 输出求和。
+
 import torch
 
 
@@ -17,6 +22,8 @@ def fused_moe_kernel_triton(
     config: Dict[str, Any],
     compute_type: torch.dtype,
 ) -> None:
+    """启动 fused MoE expert kernel。"""
+
     import triton
     import triton.language as tl
 
@@ -63,6 +70,8 @@ def fused_moe_kernel_triton(
 
 
 def moe_sum_reduce_triton(input: torch.Tensor, output: torch.Tensor) -> None:
+    """把形状 [token, top_k, hidden] 的 expert 输出按 top_k 维求和。"""
+
     import triton
 
     from .triton.fused_moe import moe_sum_reduce_kernel

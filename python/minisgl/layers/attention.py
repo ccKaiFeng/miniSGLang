@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+# 这个文件实现模型层里的 attention 封装。
+#
+# 它不直接实现 FlashAttention/FlashInfer kernel，而是负责：
+# 1. 把 qkv 合并投影结果拆成 q/k/v；
+# 2. 做可选 q_norm/k_norm；
+# 3. 应用 RoPE 位置编码；
+# 4. 调用全局 Context 中选择好的 attention backend；
+# 5. 把输出 reshape 回 hidden 维度。
+
 from typing import TYPE_CHECKING
 
 import torch
@@ -16,6 +25,8 @@ if TYPE_CHECKING:
 
 
 class AttentionLayer(StateLessOP):
+    """单层 attention 的通用封装。"""
+
     def __init__(
         self,
         layer_id: int,
@@ -26,6 +37,8 @@ class AttentionLayer(StateLessOP):
         q_norm: RMSNorm | None = None,
         k_norm: RMSNorm | None = None,
     ):
+        """记录 head 数、head_dim、RoPE 和可选 norm。"""
+
         assert num_qo_heads % num_kv_heads == 0
         self.layer_id = layer_id
         self.head_dim = head_dim
@@ -45,6 +58,8 @@ class AttentionLayer(StateLessOP):
         self.k_norm = k_norm
 
     def forward(self, qkv: torch.Tensor) -> torch.Tensor:
+        """执行 attention 前后的张量整理和 backend 调用。"""
+
         ctx = get_global_ctx()
         q, k, v = qkv.split([self.qo_attn_dim, self.kv_attn_dim, self.kv_attn_dim], dim=-1)
         if self.q_norm is not None:

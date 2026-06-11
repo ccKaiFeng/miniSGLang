@@ -1,4 +1,10 @@
 from __future__ import annotations
+
+# 这个文件把 HuggingFace 的模型配置统一转换成 miniSGLang 内部使用的配置。
+#
+# 不同模型的 HF config 字段名可能略有差异。ModelConfig.from_hf() 会把这些差异
+# 整理成统一字段，后面的 model/layer/engine 代码只依赖 ModelConfig。
+
 from dataclasses import dataclass
 from typing import Any, Dict
 from transformers import PretrainedConfig
@@ -6,6 +12,8 @@ from transformers import PretrainedConfig
 
 @dataclass(frozen=True)
 class RotaryConfig:
+    """RoPE 旋转位置编码相关配置。"""
+
     head_dim: int
     rotary_dim: int
     max_position: int
@@ -15,6 +23,8 @@ class RotaryConfig:
 
 @dataclass(frozen=True)
 class ModelConfig:
+    """miniSGLang 内部统一使用的模型结构配置。"""
+
     num_layers: int
     num_qo_heads: int
     num_kv_heads: int
@@ -35,11 +45,16 @@ class ModelConfig:
 
     @property
     def is_moe(self) -> bool:
+        """根据 model_type 判断是否是 MoE 模型。"""
+
         return "moe" in self.model_type
 
     @classmethod
     def from_hf(cls, config: PretrainedConfig) -> ModelConfig:
+        """从 HuggingFace PretrainedConfig 构造 ModelConfig。"""
+
         if hasattr(config, "text_config") and config.text_config is not None:
+            # 有些模型把真正的文本模型配置放在 text_config 内部。
             top = config
             config = config.text_config
             for attr in ("architectures", "rope_theta", "rope_scaling"):
@@ -57,6 +72,7 @@ class ModelConfig:
         architectures = getattr(config, "architectures", ["LlamaForCausalLM"])
 
         # Llama/Qwen: rope_theta is a direct attr; Mistral: it's inside rope_scaling dict
+        # Llama/Qwen 通常直接有 rope_theta；Mistral 可能放在 rope_scaling 字典里。
         rope_scaling = getattr(config, "rope_scaling", None)
         rope_theta = getattr(config, "rope_theta", None) or rope_scaling["rope_theta"]
 

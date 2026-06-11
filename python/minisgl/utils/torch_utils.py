@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# 这个文件放 PyTorch 相关的小工具。
+
 import functools
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
@@ -10,6 +12,8 @@ if TYPE_CHECKING:
 
 @contextmanager
 def torch_dtype(dtype: torch.dtype):
+    """临时修改 torch 默认 dtype，退出 with 后恢复。"""
+
     import torch  # real import when used
 
     old_dtype = torch.get_default_dtype()
@@ -21,6 +25,8 @@ def torch_dtype(dtype: torch.dtype):
 
 
 def nvtx_annotate(name: str, layer_id_field: str | None = None):
+    """给函数包一层 NVTX range，方便在 Nsight Systems 里看时间线。"""
+
     import torch.cuda.nvtx as nvtx
 
     def decorator(fn):

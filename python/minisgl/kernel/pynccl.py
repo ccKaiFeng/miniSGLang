@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件是自定义 PyNCCL 扩展的 Python wrapper。
+#
+# 它通过 TVM FFI 加载 csrc/src/pynccl.cu，并创建 NCCL communicator。上层
+# distributed/impl.py 会用它实现 all_reduce/all_gather。
+
 import functools
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -27,11 +32,15 @@ else:
 
 @functools.cache
 def _load_nccl_module() -> Module:
+    """加载 PyNCCL CUDA 扩展。"""
+
     return load_aot("pynccl", cuda_files=["pynccl.cu"], extra_ldflags=["-lnccl"])
 
 
 @functools.cache
 def _get_pynccl_wrapper_cls():
+    """注册并返回 TVM FFI 的 NCCLWrapper Python 类。"""
+
     import tvm_ffi
 
     @tvm_ffi.register_object("minisgl.NCCLWrapper")
@@ -49,6 +58,12 @@ def init_pynccl(
     tp_cpu_group: torch.distributed.ProcessGroup,
     max_size_bytes: int = 0,
 ) -> PyNCCLCommunicator:
+    """初始化 NCCL communicator。
+
+    rank 0 创建 NCCL unique id，然后通过 torch.distributed 广播给其他 rank。
+    所有 rank 拿到同一个 id 后才能加入同一个 NCCL 通信域。
+    """
+
     import torch
 
     max_size_bytes = min(max_size_bytes, ENV.PYNCCL_MAX_BUFFER_SIZE.value)

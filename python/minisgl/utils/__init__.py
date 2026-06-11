@@ -1,3 +1,5 @@
+# utils 包集中导出日志、ZMQ 队列、HF 加载、数学和 torch 辅助工具。
+
 from .arch import is_arch_supported, is_sm90_supported, is_sm100_supported
 from .hf import cached_load_hf_config, download_hf_weight, load_tokenizer
 from .logger import init_logger

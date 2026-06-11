@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件实现 FlashInfer attention backend。
+#
+# FlashInfer 对 paged KV cache 和 decode 阶段有专门优化，本 backend 负责准备
+# wrapper、indices、page table、seq lens 等元数据。
+
 import math
 from dataclasses import dataclass
 from functools import cached_property
@@ -24,6 +29,8 @@ if TYPE_CHECKING:
 
 
 def _next_power_of_2(n: int) -> int:
+    """返回大于等于 n 的最小 2 的幂。"""
+
     if n <= 1:
         return 1
     return 1 << math.ceil(math.log2(n))
@@ -34,6 +41,8 @@ logger = init_logger(__name__)
 
 @dataclass
 class FICaptureData(BaseCaptureData):
+    """FlashInfer CUDA graph capture 使用的固定 buffer。"""
+
     @property
     def one_tensor(self) -> torch.Tensor:
         return self.seq_lens
@@ -45,6 +54,8 @@ class FICaptureData(BaseCaptureData):
 
 @dataclass
 class FIMetadata(BaseAttnMetadata):
+    """FlashInfer 每个 batch 的元数据。"""
+
     # fmt: off
     cu_seqlens_q_cpu:   torch.Tensor  # on cpu
     cu_seqlens_k_cpu:   torch.Tensor  # on cpu

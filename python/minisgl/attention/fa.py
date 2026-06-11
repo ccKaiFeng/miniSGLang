@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件实现 FlashAttention backend。
+#
+# 它负责把 batch 信息整理成 FlashAttention 需要的 cu_seqlens/page_table 等元数据，
+# 并在 forward 时先写 KV cache，再调用 FA kernel 完成 attention。
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Tuple
 
@@ -16,11 +21,15 @@ if TYPE_CHECKING:
 
 @dataclass
 class FACaptureData(BaseCaptureData):
+    """FlashAttention CUDA graph capture 使用的固定 buffer。"""
+
     pass
 
 
 @dataclass
 class FAMetadata(BaseAttnMetadata):
+    """FlashAttention 每个 batch 的元数据。"""
+
     cu_seqlens_k: torch.Tensor
     cu_seqlens_q: torch.Tensor
     cache_seqlens: torch.Tensor
@@ -30,10 +39,14 @@ class FAMetadata(BaseAttnMetadata):
     page_table: torch.Tensor
 
     def get_last_indices(self, bs: int) -> torch.Tensor:
+        """返回每个请求最后一个 query token 在扁平 tensor 中的位置。"""
+
         return self.cu_seqlens_q[1 : 1 + bs] - 1
 
 
 class FlashAttentionBackend(BaseAttnBackend):
+    """基于 FlashAttention 的 attention backend。"""
+
     def __init__(self, config: ModelConfig):
         ctx = get_global_ctx()
         self.config = config

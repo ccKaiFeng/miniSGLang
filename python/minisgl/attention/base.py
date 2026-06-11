@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件定义 attention backend 的抽象接口。
+#
+# miniSGLang 支持多种 attention 实现，例如 FlashAttention、FlashInfer、
+# TensorRT-LLM。Scheduler/Engine 只依赖这里的统一接口，不直接关心底层 kernel。
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, List
@@ -11,11 +16,15 @@ if TYPE_CHECKING:
 
 @dataclass
 class BaseAttnMetadata(ABC):
+    """attention backend 为当前 batch 准备的元数据基类。"""
+
     @abstractmethod
     def get_last_indices(self, bs: int) -> torch.Tensor: ...
 
 
 class BaseAttnBackend(ABC):
+    """attention backend 抽象接口。"""
+
     @abstractmethod
     def forward(
         self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
@@ -35,21 +44,29 @@ class BaseAttnBackend(ABC):
 
 
 class HybridBackend(BaseAttnBackend):
+    """prefill 和 decode 使用不同 backend 的组合封装。"""
+
     def __init__(
         self,
         prefill_backend: BaseAttnBackend,
         decode_backend: BaseAttnBackend,
     ) -> None:
+        """保存 prefill/decode 各自的 backend。"""
+
         self.prefill_backend = prefill_backend
         self.decode_backend = decode_backend
 
     def forward(
         self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
     ) -> torch.Tensor:
+        """根据 batch.phase 选择 prefill 或 decode backend。"""
+
         backend = self.prefill_backend if batch.is_prefill else self.decode_backend
         return backend.forward(q, k, v, layer_id, batch)
 
     def prepare_metadata(self, batch: Batch) -> None:
+        """把 metadata 准备工作转发给当前阶段对应的 backend。"""
+
         backend = self.prefill_backend if batch.is_prefill else self.decode_backend
         return backend.prepare_metadata(batch)
 

@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# 这个文件放多个模型共享的 block。
+#
+# Llama/Qwen/Mistral 的整体结构很接近：Embedding -> 多层 DecoderLayer ->
+# Norm -> LMHead。DecoderLayer 内部通常包含 Attention 和 MLP。这里把共享的
+# MLP、MoE MLP、RoPE Attention 抽出来，减少各模型文件重复代码。
+
 from typing import TYPE_CHECKING
 
 from minisgl.layers import (
@@ -23,7 +29,11 @@ if TYPE_CHECKING:
 
 
 class GatedMLP(BaseOP):
+    """dense 模型使用的 gated MLP。"""
+
     def __init__(self, config: ModelConfig):
+        """创建 gate/up 合并投影、激活函数和 down projection。"""
+
         self.gate_up_proj = LinearColParallelMerged(
             config.hidden_size,
             [config.intermediate_size, config.intermediate_size],
@@ -43,6 +53,8 @@ class GatedMLP(BaseOP):
 
     @nvtx_annotate("MLP")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """执行 MLP：gate/up 投影 -> fused activation -> down projection。"""
+
         gate_up = self.gate_up_proj.forward(x)
         del x
         y = self.act_fn(gate_up)
@@ -51,7 +63,11 @@ class GatedMLP(BaseOP):
 
 
 class MoEMLP(BaseOP):
+    """MoE 模型使用的 MLP。"""
+
     def __init__(self, config: ModelConfig):
+        """创建 expert 层和 router/gate 线性层。"""
+
         self.experts = MoELayer(
             num_experts=config.num_experts,
             top_k=config.num_experts_per_tok,
@@ -66,6 +82,8 @@ class MoEMLP(BaseOP):
         )
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """先用 gate 算每个 token 应该去哪些 expert，再执行 expert 计算。"""
+
         num_tokens, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_dim)
         router_logits = self.gate.forward(hidden_states)
@@ -77,6 +95,8 @@ class MoEMLP(BaseOP):
 
 
 class RopeAttn(BaseOP):
+    """带 RoPE 的 attention block。"""
+
     def __init__(
         self,
         config: ModelConfig,
@@ -117,6 +137,8 @@ class RopeAttn(BaseOP):
 
     @nvtx_annotate("MHA")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """执行 QKV projection、attention backend 和输出投影。"""
+
         qkv = self.qkv_proj.forward(x)
         del x
         o = self.attn.forward(qkv)

@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件实现 Qwen3 MoE causal language model。
+#
+# 它和 dense Qwen3 的主要区别是 MLP 使用 MoEMLP，每个 token 会经过 router
+# 选择 top-k expert。
+
 from typing import TYPE_CHECKING, Tuple
 
 import torch
@@ -16,6 +21,8 @@ if TYPE_CHECKING:
 
 
 class Qwen3DecoderLayer(BaseOP):
+    """一层 Qwen3 MoE decoder block。"""
+
     def __init__(self, config: ModelConfig, layer_id: int):
         self.self_attn = Qwen3Attn(config, layer_id, has_qk_norm=True)
         self.mlp = Qwen3MLP(config)
@@ -34,6 +41,8 @@ class Qwen3DecoderLayer(BaseOP):
     def forward(
         self, x: torch.Tensor, residual: torch.Tensor | None = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """执行一层 Qwen3 MoE decoder。"""
+
         x, residual = self.input_layernorm.forward(x, residual)
         x = self.self_attn.forward(x)
         x, residual = self.post_attention_layernorm.forward(x, residual)
@@ -42,6 +51,8 @@ class Qwen3DecoderLayer(BaseOP):
 
 
 class Qwen3Model(BaseOP):
+    """不带 lm_head 的 Qwen3 MoE 主体。"""
+
     def __init__(self, config: ModelConfig):
         self.embed_tokens = VocabParallelEmbedding(
             num_embeddings=config.vocab_size,
@@ -56,6 +67,8 @@ class Qwen3Model(BaseOP):
         )
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """从 token id 得到最后一层 hidden states。"""
+
         x = self.embed_tokens.forward(input_ids)
         residual: torch.Tensor | None = None
         for layer in self.layers.op_list:
@@ -64,6 +77,8 @@ class Qwen3Model(BaseOP):
 
 
 class Qwen3MoeForCausalLM(BaseLLMModel):
+    """完整 Qwen3 MoE 因果语言模型。"""
+
     def __init__(self, config: ModelConfig):
         self.model = Qwen3Model(config)
         self.lm_head = ParallelLMHead(
@@ -75,6 +90,8 @@ class Qwen3MoeForCausalLM(BaseLLMModel):
         super().__init__()
 
     def forward(self) -> torch.Tensor:
+        """读取当前 batch.input_ids 并输出 logits。"""
+
         output = self.model.forward(get_global_ctx().batch.input_ids)
         logits = self.lm_head.forward(output)
         return logits

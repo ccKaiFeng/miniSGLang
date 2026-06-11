@@ -1,4 +1,10 @@
 import torch
+
+# 这个文件实现模型层中的 MoE expert 层。
+#
+# MoE(Mixture of Experts) 会为每个 token 选择 top_k 个 expert。这里保存每个
+# expert 的 gate/up/down 权重，并把真正的 expert 计算交给 ctx.moe_backend。
+
 from minisgl.core import get_global_ctx
 from minisgl.distributed import DistributedCommunicator, get_tp_info
 from minisgl.utils import div_even
@@ -7,6 +13,8 @@ from .base import BaseOP
 
 
 class MoELayer(BaseOP):
+    """一层 MoE experts。"""
+
     def __init__(
         self,
         num_experts: int,
@@ -17,6 +25,11 @@ class MoELayer(BaseOP):
         activation: str = "silu",
         apply_router_weight_on_input: bool = False,
     ):
+        """创建 expert 权重。
+
+        intermediate_size 会按 TP size 切分，每个 rank 保存 expert 的一部分中间维度。
+        """
+
         super().__init__()
 
         self.num_experts = num_experts
@@ -43,6 +56,8 @@ class MoELayer(BaseOP):
         )
 
     def forward(self, hidden_states: torch.Tensor, router_logits: torch.Tensor):
+        """根据 router_logits 选择 expert 并计算 token 输出。"""
+
         ctx = get_global_ctx()
         final_hidden_states = ctx.moe_backend.forward(
             hidden_states=hidden_states,

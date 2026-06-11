@@ -1,3 +1,5 @@
+# distributed 包导出 Tensor Parallel 身份信息和通信入口。
+
 from .impl import DistributedCommunicator, destroy_distributed, enable_pynccl_distributed
 from .info import DistributedInfo, get_tp_info, set_tp_info, try_get_tp_info
 

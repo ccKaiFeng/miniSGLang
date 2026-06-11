@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+# 这个文件负责从 HuggingFace safetensors 权重加载到 miniSGLang 模型。
+#
+# 它不只是简单读文件，还会做三类转换：
+# 1. Tensor Parallel 分片：每个 rank 只加载自己负责的权重切片；
+# 2. 权重合并：把 q/k/v 或 gate/up 这类 checkpoint 中分开的权重合并成运行时权重；
+# 3. MoE expert 打包：把每个 expert 的权重 stack 成 [num_experts, ...] 格式。
+
 import glob
 import re
 from typing import Dict, Iterator, Tuple
@@ -32,7 +39,8 @@ _EXPERT_PATTERN = re.compile(r"^(?P<prefix>.+\.experts)\.(?P<idx>\d+)\.(?P<name>
 
 
 def _shard_tensor(key: str, value: torch.Tensor, r: int, n: int, num_kv_heads: int):
-    """Extract rank r's shard from a single tensor. Returns a contiguous copy."""
+    """从完整 tensor 中切出第 r 个 TP rank 需要的分片。"""
+
     if any(key.count(sub) for sub in _SPLIT_DIM_0):
         is_kv_proj = any(key.count(sub) for sub in (".k_proj", ".v_proj"))
         if is_kv_proj and num_kv_heads is not None and num_kv_heads < n:
@@ -53,7 +61,8 @@ def _shard_tensor(key: str, value: torch.Tensor, r: int, n: int, num_kv_heads: i
 
 
 def _get_merge_info(key: str):
-    """If key belongs to a merge group, return (merged_key, slot, all_slots). Else None."""
+    """判断某个权重是否属于需要合并的组。"""
+
     for suffix, (fused_suffix, slots) in _MERGE_GROUPS.items():
         if key.count(suffix):
             return key.replace(suffix, fused_suffix), _SLOT_NAMES[suffix], slots
@@ -61,7 +70,8 @@ def _get_merge_info(key: str):
 
 
 def _get_expert_stack_info(key: str) -> tuple[str, int] | None:
-    """Map an expert-scoped checkpoint key to the packed runtime key."""
+    """把单个 expert 的 checkpoint key 映射成运行时打包 key。"""
+
     match = _EXPERT_PATTERN.match(key)
     if match is None:
         return None
@@ -73,8 +83,12 @@ def _get_expert_stack_info(key: str) -> tuple[str, int] | None:
 
 
 def load_weight(model_path: str, device: torch.device) -> Iterator[Tuple[str, torch.Tensor]]:
-    """Streaming weight loader. Yields (name, tensor) pairs already sharded, merged,
-    and on device. Peak CPU memory: one full tensor + a small merge buffer."""
+    """流式加载权重，并逐个 yield 给模型。
+
+    返回的每个 (name, tensor) 都已经完成 TP 分片、必要的权重合并，并放到目标 device。
+    这样可以降低峰值 CPU 内存占用。
+    """
+
     from .config import ModelConfig
 
     model_folder = download_hf_weight(model_path)
@@ -84,7 +98,10 @@ def load_weight(model_path: str, device: torch.device) -> Iterator[Tuple[str, to
     tp_info = get_tp_info()
 
     # Buffer for merge groups: merged_key -> {slot: tensor}
+    # merge_buf 暂存 q/k/v 或 gate/up，等同组权重都到齐后再 cat。
     merge_buf: Dict[str, Dict[str, torch.Tensor]] = {}
+
+    # expert_buf 暂存 MoE 每个 expert，等所有 expert 到齐后 stack。
     expert_buf: Dict[str, Dict[int, torch.Tensor]] = {}
     for file in tqdm(files, desc="Loading weights", disable=not tp_info.is_primary()):
         with safetensors.safe_open(file, framework="pt", device=str(device)) as f:

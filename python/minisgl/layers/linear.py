@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+# 这个文件实现支持 Tensor Parallel(TP) 的线性层。
+#
+# 普通线性层是 y = x @ W^T + b。TP 场景下，W 会按输入维或输出维切到多张 GPU：
+# - column parallel：每个 rank 负责一部分输出通道；
+# - row parallel：每个 rank 负责一部分输入通道，最后 all_reduce 合并；
+# - replicated：每个 rank 都保存完整权重。
+
 from typing import List
 
 import torch
@@ -11,7 +18,7 @@ from .base import BaseOP
 
 
 class _LinearTPImpl(BaseOP):
-    """Real implementation of a linear layer with tensor parallelism."""
+    """TP 线性层的基础实现，保存本 rank 的局部权重。"""
 
     def __init__(
         self,
@@ -21,6 +28,8 @@ class _LinearTPImpl(BaseOP):
         local_osize: int,
         has_bias: bool,
     ):
+        """记录完整尺寸和本 rank 局部尺寸，并创建占位权重。"""
+
         self.full_input_size = full_isize
         self.full_output_size = full_osize
         self.local_input_size = local_isize
@@ -29,14 +38,13 @@ class _LinearTPImpl(BaseOP):
         self.bias = torch.empty(local_osize) if has_bias else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """执行本 rank 上的线性计算。"""
+
         return F.linear(x, self.weight, self.bias)
 
 
 class LinearReplicated(_LinearTPImpl):
-    """
-    Linear layer where weights are replicated (not sharded) across all TP ranks.
-    Each GPU holds the full weight matrix.
-    """
+    """权重不切分的线性层，每个 TP rank 都保存完整矩阵。"""
 
     def __init__(
         self,
@@ -54,6 +62,8 @@ class LinearReplicated(_LinearTPImpl):
 
 
 class LinearColParallelMerged(_LinearTPImpl):
+    """按输出维切分的 merged 线性层，常用于 MLP 的 gate/up 合并投影。"""
+
     def __init__(
         self,
         input_size: int,
@@ -69,6 +79,8 @@ class LinearColParallelMerged(_LinearTPImpl):
 
 
 class LinearQKVMerged(_LinearTPImpl):
+    """Attention 的 Q/K/V 合并投影层。"""
+
     def __init__(
         self,
         hidden_size: int,
@@ -89,6 +101,8 @@ class LinearQKVMerged(_LinearTPImpl):
 
 
 class LinearOProj(_LinearTPImpl):
+    """Attention 输出投影层，输入维按 TP 切分，输出需要 all_reduce。"""
+
     def __init__(self, input_size: int, output_size: int, has_bias: bool):
         tp_info = get_tp_info()
         full_isize = input_size
@@ -100,6 +114,8 @@ class LinearOProj(_LinearTPImpl):
         super().__init__(full_isize, full_osize, local_isize, local_osize, has_bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """本 rank 先做局部线性层，多卡时再 all_reduce 合并。"""
+
         y = F.linear(x, self.weight, self.bias)
         if self._tp_size > 1:
             y = self._comm.all_reduce(y)
@@ -107,6 +123,8 @@ class LinearOProj(_LinearTPImpl):
 
 
 class LinearRowParallel(_LinearTPImpl):
+    """按输入维切分的线性层，输出需要 all_reduce。"""
+
     def __init__(
         self,
         input_size: int,
@@ -121,6 +139,8 @@ class LinearRowParallel(_LinearTPImpl):
         super().__init__(input_size, output_size, local_input_size, local_output_size, has_bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """本 rank 计算局部输入贡献，多卡时所有 rank 求和。"""
+
         y = F.linear(x, self.weight, self.bias)
         if self._tp_size > 1:
             y = self._comm.all_reduce(y)

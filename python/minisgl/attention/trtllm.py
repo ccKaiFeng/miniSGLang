@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件实现 TensorRT-LLM FMHA backend。
+#
+# 它使用 flashinfer 暴露的 TensorRT-LLM attention 接口，并为 prefill/decode
+# 准备所需 metadata 和 workspace buffer。
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, List
 
@@ -15,11 +20,15 @@ if TYPE_CHECKING:
 
 @dataclass
 class TRTLLMCaptureData(BaseCaptureData):
+    """TensorRT-LLM backend 的 CUDA graph capture buffer。"""
+
     pass
 
 
 @dataclass
 class TRTLLMMetadata(BaseAttnMetadata):
+    """TensorRT-LLM backend 每个 batch 的元数据。"""
+
     cu_seqlens_k: torch.Tensor
     cu_seqlens_q: torch.Tensor
     cache_seqlens: torch.Tensor
@@ -33,6 +42,8 @@ class TRTLLMMetadata(BaseAttnMetadata):
 
 
 class TensorRTLLMBackend(BaseAttnBackend):
+    """基于 TensorRT-LLM FMHA 的 attention backend。"""
+
     def __init__(self, config: ModelConfig):
         ctx = get_global_ctx()
         self.config = config

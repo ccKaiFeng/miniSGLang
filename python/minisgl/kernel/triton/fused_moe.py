@@ -1,6 +1,13 @@
 import triton
 import triton.language as tl
 
+# 这个文件是真正的 Triton MoE kernel。
+#
+# 上层 Python 代码会先把 token 按 expert 排序、padding，并准备 top-k 权重。
+# 这里的 kernel 在 GPU 上执行：
+# - moe_sum_reduce_kernel：把多个 expert 输出求和；
+# - fused_moe_kernel：执行 expert 权重矩阵乘，并可乘上 router 权重。
+
 
 @triton.jit
 def moe_sum_reduce_kernel(
@@ -18,6 +25,7 @@ def moe_sum_reduce_kernel(
     BLOCK_DIM: tl.constexpr,
     NUM_STAGE: tl.constexpr,
 ):
+    # 每个 program 处理一个 token block 和 hidden dim block。
     input_stride_0 = tl.cast(input_stride_0, dtype=tl.int64)
     input_stride_1 = tl.cast(input_stride_1, dtype=tl.int64)
     output_stride_0 = tl.cast(output_stride_0, dtype=tl.int64)

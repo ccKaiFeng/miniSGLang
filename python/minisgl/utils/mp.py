@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件封装基于 ZMQ + msgpack 的进程间队列。
+#
+# miniSGLang 的 API Server、tokenizer、scheduler、detokenizer 是不同进程。
+# 它们通过这里的 Push/Pull/Pub/Sub 队列传递序列化后的消息对象。
+
 from typing import Callable, Dict, Generic, TypeVar
 
 import msgpack
@@ -10,6 +15,8 @@ T = TypeVar("T")
 
 
 class ZmqPushQueue(Generic[T]):
+    """同步 PUSH 队列，负责发送消息。"""
+
     def __init__(
         self,
         addr: str,
@@ -22,6 +29,8 @@ class ZmqPushQueue(Generic[T]):
         self.encoder = encoder
 
     def put(self, obj: T):
+        """编码并发送一个对象。"""
+
         event = msgpack.packb(self.encoder(obj), use_bin_type=True)
         self.socket.send(event, copy=False)
 
@@ -31,6 +40,8 @@ class ZmqPushQueue(Generic[T]):
 
 
 class ZmqAsyncPushQueue(Generic[T]):
+    """asyncio 版本的 PUSH 队列，用于 FastAPI 前端。"""
+
     def __init__(
         self,
         addr: str,
@@ -52,6 +63,8 @@ class ZmqAsyncPushQueue(Generic[T]):
 
 
 class ZmqPullQueue(Generic[T]):
+    """同步 PULL 队列，负责接收消息。"""
+
     def __init__(
         self,
         addr: str,
@@ -64,6 +77,8 @@ class ZmqPullQueue(Generic[T]):
         self.decoder = decoder
 
     def get(self) -> T:
+        """阻塞接收一条消息并解码。"""
+
         event = self.socket.recv()
         return self.decoder(msgpack.unpackb(event, raw=False))
 
@@ -82,6 +97,8 @@ class ZmqPullQueue(Generic[T]):
 
 
 class ZmqAsyncPullQueue(Generic[T]):
+    """asyncio 版本的 PULL 队列。"""
+
     def __init__(
         self,
         addr: str,

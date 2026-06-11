@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# 这个文件是 online benchmark 的公共客户端工具。
+#
+# 它使用 OpenAI 兼容 API 向 miniSGLang server 发送请求，记录每个 token 到达的
+# 时间戳，然后统计吞吐、延迟、TTFT(Time To First Token) 等指标。
+
 import asyncio
 import random
 import time
@@ -17,6 +22,8 @@ logger = init_logger(__name__)
 
 @dataclass(frozen=True)
 class BenchmarkTrace:
+    """一条 benchmark 请求轨迹。"""
+
     timestamp: float  # unit (second)
     message: str
     output_length: int  # output length in tokens
@@ -25,15 +32,21 @@ class BenchmarkTrace:
 
 @dataclass(frozen=True)
 class BenchOneResult:
+    """单个请求的测量结果。"""
+
     tics: List[float]
     input_len: int
     output_len: int
 
     def as_json(self) -> List[float]:
+        """转成便于保存的 list 格式。"""
+
         return [self.input_len, self.output_len] + self.tics
 
     @staticmethod
     def from_json(raw: List[float]) -> BenchOneResult:
+        """从保存的 list 恢复 BenchOneResult。"""
+
         # check raw[0] and raw[1] are integers
         assert raw[0].is_integer() and raw[1].is_integer()
         return BenchOneResult(tics=raw[2:], input_len=int(raw[0]), output_len=int(raw[1]))
@@ -41,6 +54,8 @@ class BenchOneResult:
 
 @dataclass(frozen=True)
 class RawResult:
+    """原始请求结果，后续会被汇总成 BenchmarkResult。"""
+
     input_len: int | None
     output_len: int
     message: str
@@ -49,20 +64,28 @@ class RawResult:
 
 @dataclass
 class Counter:
+    """简单计数器，同时记录历史最大值。"""
+
     current: int = 0
     history_max: int = 0
 
     def inc(self, n=1):
+        """计数增加 n。"""
+
         self.current += n
         self.history_max = max(self.history_max, self.current)
 
     def dec(self, n=1):
+        """计数减少 n，并检查不会变成负数。"""
+
         self.current -= n
         assert self.current >= 0
 
 
 @dataclass
 class Console:
+    """管理 benchmark 运行时的多个 tqdm 进度条。"""
+
     input_pbar: tqdm
     output_pbar: tqdm
     prefill_pbar: tqdm
@@ -72,12 +95,16 @@ class Console:
     queue_counter: Counter = field(default_factory=Counter)
 
     def update_input(self, n=1):
+        """记录新请求进入系统。"""
+
         self.input_pbar.update(n)
         self.input_pbar.refresh()
         self.inflight_counter.inc(n)
         self.queue_counter.inc(n)
 
     def update_output(self, n=1):
+        """记录一个请求完成输出。"""
+
         self.output_pbar.update(n)
         self.output_pbar.refresh()
         self.inflight_counter.dec(n)

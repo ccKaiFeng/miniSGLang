@@ -1,3 +1,5 @@
+# models 包导出模型配置、模型创建和权重加载入口。
+
 from .base import BaseLLMModel
 from .config import ModelConfig, RotaryConfig
 from .register import get_model_class
