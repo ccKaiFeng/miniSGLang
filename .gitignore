@@ -31,3 +31,5 @@ env/
 # .vscode
 .vscode/
 .coverage
+
+.DS_store
