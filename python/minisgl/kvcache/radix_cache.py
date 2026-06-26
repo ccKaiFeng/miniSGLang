@@ -101,6 +101,17 @@ class RadixTreeNode:
         # compare key and input_ids, find the first diff
         return fast_compare_key(self._key, input_ids)
 
+    def get_full_key(self) -> torch.Tensor:
+        """从 root 到当前节点拼出完整 token 前缀。"""
+
+        node = self
+        key_list: List[torch.Tensor] = []
+        while not node.is_root():
+            key_list.append(node._key)
+            node = node.parent
+        key_list.reverse()
+        return torch.cat(key_list)
+
     def split_at(self, pos: int) -> RadixTreeNode:
         """在 pos 位置拆分节点。
 
@@ -165,6 +176,7 @@ class RadixPrefixCache(BasePrefixCache):
         self.empty_tensor = torch.empty(0, dtype=torch.int32, device=device)
         self.evictable_size = 0
         self.protected_size = 0
+        self.last_evicted_entries: List[Dict[str, torch.Tensor]] = []
         self.root_node = RadixTreeNode(self.key_fn)
         self.root_node.ref_count = 1  # root is always protected
 
@@ -237,6 +249,7 @@ class RadixPrefixCache(BasePrefixCache):
         leave_nodes = self._collect_leave_nodes_for_evict()
         heapq.heapify(leave_nodes)
         evicted_indices: List[torch.Tensor] = []
+        self.last_evicted_entries = []
         evicted_size = 0
 
         while evicted_size < size:
@@ -247,6 +260,12 @@ class RadixPrefixCache(BasePrefixCache):
             assert node.ref_count == 0 and node.is_leaf() and not node.is_root()
             evicted_size += node.length
             evicted_indices.append(node.value)
+            self.last_evicted_entries.append(
+                {
+                    "token_ids": node.get_full_key(),
+                    "indices": node.value,
+                }
+            )
             self.evictable_size -= node.length
             parent = node.parent
             del parent.children[self.key_fn(node._key)]

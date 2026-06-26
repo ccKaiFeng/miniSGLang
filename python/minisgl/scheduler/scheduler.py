@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, NamedTuple, NoReturn, Set, Tuple, TypeAlias
 
 import torch
+from minisgl.compressed_kv_cache import CompressedKVCacheManager
 from minisgl.core import Batch, Req
 from minisgl.env import ENV
 from minisgl.message import (
@@ -84,8 +85,17 @@ class Scheduler(SchedulerIOMixin):
 
         # initialize other managers
         self.table_manager = TableManager(config.max_running_req, self.engine.page_table)
+        self.compressed_kv_manager = (
+            CompressedKVCacheManager(config, kv_pool=self.engine.kv_cache, logger=logger)
+            if config.enable_compressed_kv_cache
+            else None
+        )
         self.cache_manager = CacheManager(
-            self.engine.num_pages, config.page_size, self.engine.page_table, config.cache_type
+            self.engine.num_pages,
+            config.page_size,
+            self.engine.page_table,
+            config.cache_type,
+            compressed_kv_manager=self.compressed_kv_manager,
         )
         self.decode_manager = DecodeManager(config.page_size)
         self.prefill_manager = PrefillManager(
@@ -178,6 +188,8 @@ class Scheduler(SchedulerIOMixin):
 
         torch.cuda.synchronize(self.device)
         self.sync_all_ranks()
+        if self.compressed_kv_manager is not None:
+            self.compressed_kv_manager.log_stats()
         self.engine.shutdown()
 
     def _process_last_data(self, last_data: ForwardData | None) -> None:

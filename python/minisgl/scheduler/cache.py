@@ -20,13 +20,21 @@ from minisgl.kvcache import BaseCacheHandle, MatchResult, create_prefix_cache
 from minisgl.utils import div_ceil
 
 if TYPE_CHECKING:
+    from minisgl.compressed_kv_cache import CompressedKVCacheManager
     from .utils import PendingReq
 
 
 class CacheManager:
     """Scheduler 侧 KV cache 管理器。"""
 
-    def __init__(self, num_pages: int, page_size: int, page_table: torch.Tensor, type: str):
+    def __init__(
+        self,
+        num_pages: int,
+        page_size: int,
+        page_table: torch.Tensor,
+        type: str,
+        compressed_kv_manager: "CompressedKVCacheManager | None" = None,
+    ):
         # The `_free_slots` follows a page-aligned manner. For example, if page_size = 2,
         # the `_free_slots` may look like [0, 2, 4, 6, ...], and each slot represents a page.
         device = page_table.device
@@ -43,6 +51,7 @@ class CacheManager:
         # page_table[table_idx, token_pos] = KV cache 物理 token index。
         self.page_table = page_table
         self.page_size = page_size
+        self.compressed_kv_manager = compressed_kv_manager
 
     def match_req(self, req: PendingReq) -> MatchResult:
         """查询请求 prompt 是否有可复用前缀缓存。
@@ -53,7 +62,14 @@ class CacheManager:
 
         input_len = req.input_len
         assert input_len > 0, "Input length must be greater than 0."
-        return self.prefix_cache.match_prefix(req.input_ids[: input_len - 1])
+        match_ids = req.input_ids[: input_len - 1]
+        if self.compressed_kv_manager is not None and self.compressed_kv_manager.enabled():
+            meta = self.compressed_kv_manager.find_match(match_ids)
+            if meta is not None and self.compressed_kv_manager.should_restore(meta, len(match_ids)):
+                # 第一版 mock restore 返回 None，所以下面不会改变 cuda prefix cache
+                # 的命中结果。真实 restore 路径打通后，可以在这里接入恢复后的 handle。
+                self.compressed_kv_manager.maybe_restore(meta)
+        return self.prefix_cache.match_prefix(match_ids)
 
     @property
     def available_size(self) -> int:
@@ -130,10 +146,26 @@ class CacheManager:
 
         # this part is already in the prefix cache, free it
         # 这一段已被 prefix cache 复用，不需要当前请求独占这些 page。
-        self._free(page_indices[old_handle.cached_len : cached_len])
+        duplicated_indices = page_indices[old_handle.cached_len : cached_len]
+        self._demote_before_free(
+            req,
+            duplicated_indices,
+            old_handle.cached_len,
+            cached_len,
+            reason="prefix_duplicate_free",
+        )
+        self._free(duplicated_indices)
         if finished:  # this tail part should be freed
             # 请求结束，不能插入 prefix cache 的尾部也释放。
-            self._free(page_indices[new_handle.cached_len :])
+            tail_indices = page_indices[new_handle.cached_len :]
+            self._demote_before_free(
+                req,
+                tail_indices,
+                new_handle.cached_len,
+                req.cached_len,
+                reason="request_finished_tail_free",
+            )
+            self._free(tail_indices)
         else:  # keep the tail part, update the handle
             # 请求还要继续 decode，更新 handle 并锁定，防止被驱逐。
             req.cache_handle = new_handle
@@ -181,6 +213,7 @@ class CacheManager:
         if needed_pages > (free_pages := len(self.free_slots)):
             # free page 不够，驱逐可驱逐的 prefix cache。
             evicted = self.prefix_cache.evict((needed_pages - free_pages) * self.page_size)
+            self._demote_prefix_eviction(evicted, reason="prefix_cache_evict")
             self.free_slots = torch.cat([self.free_slots, evicted[:: self.page_size]])
             assert len(self.free_slots) >= needed_pages, "Eviction did not free enough space."
 
@@ -194,6 +227,71 @@ class CacheManager:
 
         if len(indices) > 0:
             self.free_slots = torch.cat([self.free_slots, indices[:: self.page_size]])
+
+    def _demote_before_free(
+        self,
+        req: Req,
+        indices: torch.Tensor,
+        begin: int,
+        end: int,
+        *,
+        reason: str,
+    ) -> None:
+        """释放请求私有 KV page 前，先把这段 cache 写入 compressed archive。"""
+
+        if self.compressed_kv_manager is None or not self.compressed_kv_manager.enabled():
+            return
+        if len(indices) == 0 or end <= begin:
+            return
+        token_ids = req.input_ids[begin:end]
+        self.compressed_kv_manager.demote(
+            {
+                "request_id": req.uid,
+                "token_ids": token_ids,
+                "indices": indices,
+                "num_tokens": len(indices),
+                "page_size": self.page_size,
+                "reason": reason,
+                "layout": "request_token_indices",
+            }
+        )
+
+    def _demote_prefix_eviction(self, indices: torch.Tensor, *, reason: str) -> None:
+        """prefix cache 被驱逐时保存 indices-only metadata。
+
+        radix cache 会额外暴露 last_evicted_entries，里面包含 token_ids 和 indices，
+        因而可以建立 request-level hash；naive 或其他 cache 没有这份元数据时，
+        退化为 indices-only metadata。
+        """
+
+        if self.compressed_kv_manager is None or not self.compressed_kv_manager.enabled():
+            return
+        if len(indices) == 0:
+            return
+        entries = getattr(self.prefix_cache, "last_evicted_entries", None)
+        if entries:
+            for item in entries:
+                evicted_indices = item["indices"]
+                self.compressed_kv_manager.demote(
+                    {
+                        "token_ids": item["token_ids"],
+                        "indices": evicted_indices,
+                        "num_tokens": len(evicted_indices),
+                        "page_size": self.page_size,
+                        "reason": reason,
+                        "layout": "prefix_cache_evicted_radix_node",
+                    }
+                )
+            return
+        self.compressed_kv_manager.demote(
+            {
+                "indices": indices,
+                "num_tokens": len(indices),
+                "page_size": self.page_size,
+                "reason": reason,
+                "layout": "prefix_cache_evicted_indices",
+            }
+        )
 
     def _page_to_token(self, pages: torch.Tensor) -> torch.Tensor:
         """把 page 起始 index 展开成 token index。"""

@@ -274,6 +274,40 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         help="The KV cache management strategy.",
     )
 
+    # 实验功能：释放/驱逐 KV cache 前保存 compressed archive。
+    parser.add_argument(
+        "--enable-compressed-kv-cache",
+        action="store_true",
+        default=ServerArgs.enable_compressed_kv_cache,
+        help="Enable experimental Compressed KV Cache Demotion.",
+    )
+    parser.add_argument(
+        "--compressed-kv-cache-dir",
+        type=str,
+        default=ServerArgs.compressed_kv_cache_dir,
+        help="Directory for compressed KV cache metadata/tensor archives.",
+    )
+    parser.add_argument(
+        "--compressed-kv-cache-codec",
+        type=str,
+        default=ServerArgs.compressed_kv_cache_codec,
+        choices=["mock", "int8_cpu"],
+        help="Compressed KV cache codec. int8_cpu is currently metadata-only TODO.",
+    )
+    parser.add_argument(
+        "--compressed-kv-cache-max-size-mb",
+        type=int,
+        default=ServerArgs.compressed_kv_cache_max_size_mb,
+        help="Maximum compressed KV archive size in MiB.",
+    )
+    parser.add_argument(
+        "--compressed-kv-cache-restore-policy",
+        type=str,
+        default=ServerArgs.compressed_kv_cache_restore_policy,
+        choices=["cost", "always", "never"],
+        help="Policy for attempting compressed KV restore on archive hits.",
+    )
+
     # MoE backend 选择。
     parser.add_argument(
         "--moe-backend",

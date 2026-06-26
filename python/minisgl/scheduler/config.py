@@ -28,6 +28,13 @@ class SchedulerConfig(EngineConfig):
     # KV cache 管理策略，例如 radix 或 naive。
     cache_type: str = "radix"
 
+    # 实验功能：KV cache 即将释放/驱逐时，先在 Python 层保存压缩归档。
+    enable_compressed_kv_cache: bool = False
+    compressed_kv_cache_dir: str = "/root/autodl-tmp/kv_archive"
+    compressed_kv_cache_codec: str = "mock"
+    compressed_kv_cache_max_size_mb: int = 4096
+    compressed_kv_cache_restore_policy: str = "cost"
+
     # offline_mode 用于 LLM 本地接口，区别于多进程 online serving。
     offline_mode: bool = False
 
