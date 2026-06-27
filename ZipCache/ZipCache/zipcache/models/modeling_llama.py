@@ -26,6 +26,10 @@
 - prefill 阶段根据注意力分布识别低重要性 token；
 - use_cache=True 时把新的 K/V 压缩后返回。
 """
+# 下面的 import 大致分三类：
+# - torch / nn：实现神经网络层和 tensor 运算；
+# - transformers：复用 HuggingFace 的模型基类、输出结构、mask 工具；
+# - CompressUtils：ZipCache 自己的 KV cache 压缩对象。
 import math
 import warnings
 from typing import List, Optional, Tuple, Union
@@ -67,6 +71,8 @@ from transformers.models.llama.configuration_llama import LlamaConfig
 from .CompressUtils import CompressUnion, MixedPrecisionCompressUnion
 
 if is_flash_attn_2_available():
+    # FlashAttention 是高性能 attention kernel。ZipCache 只改变 KV cache 的存储
+    # 方式，真实 attention 输出仍然可以交给 FlashAttention 计算。
     from flash_attn import flash_attn_func, flash_attn_varlen_func
     from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input  # noqa
 
@@ -96,6 +102,12 @@ def detect_infnan(input_tensor, string):
 
 
 def _get_unpad_data(attention_mask):
+    """把 padding mask 转成 FlashAttention varlen 接口需要的索引信息。
+
+    初学者可以理解为：batch 内不同样本长度不一样时，FlashAttention 希望把
+    padding token 去掉，只计算真实 token。这个函数返回去 padding 所需的元数据。
+    """
+
     seqlens_in_batch = attention_mask.sum(dim=-1, dtype=torch.int32)
     indices = torch.nonzero(attention_mask.flatten(), as_tuple=False).flatten()
     max_seqlen_in_batch = seqlens_in_batch.max().item()
@@ -136,6 +148,12 @@ def _make_causal_mask(
 
 
 class LlamaRMSNorm(nn.Module):
+    """LLaMA 使用的 RMSNorm。
+
+    RMSNorm 和 LayerNorm 类似，都是为了让 hidden_states 数值更稳定。
+    区别是 RMSNorm 不减均值，只除以均方根，计算更简单。
+    """
+
     def __init__(self, hidden_size, eps=1e-6):
         """
         LlamaRMSNorm is equivalent to T5LayerNorm
@@ -145,7 +163,10 @@ class LlamaRMSNorm(nn.Module):
         self.variance_epsilon = eps
 
     def forward(self, hidden_states):
+        """对最后一维 hidden_size 做归一化。"""
+
         input_dtype = hidden_states.dtype
+        # 归一化时临时转 float32，减少 fp16/bf16 精度问题。
         hidden_states = hidden_states.to(torch.float32)
         variance = hidden_states.pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
@@ -156,6 +177,12 @@ ALL_LAYERNORM_LAYERS.append(LlamaRMSNorm)
 
 
 class LlamaRotaryEmbedding(nn.Module):
+    """RoPE 位置编码。
+
+    LLaMA 不把位置 embedding 直接加到 token embedding 上，而是用 RoPE 把位置信息
+    旋转到 Q/K 向量中。这样 attention 分数自然带有相对位置信息。
+    """
+
     def __init__(self, dim, max_position_embeddings=2048, base=10000, device=None):
         super().__init__()
 
@@ -175,6 +202,11 @@ class LlamaRotaryEmbedding(nn.Module):
         )
 
     def _set_cos_sin_cache(self, seq_len, device, dtype):
+        """预计算 RoPE 需要的 cos/sin 表。
+
+        生成时会反复用到这些值，提前缓存能避免每一步重复计算。
+        """
+
         self.max_seq_len_cached = seq_len
         t = torch.arange(
             self.max_seq_len_cached, device=device, dtype=self.inv_freq.dtype
@@ -188,6 +220,7 @@ class LlamaRotaryEmbedding(nn.Module):
 
     def forward(self, x, seq_len=None):
         # x: [bs, num_attention_heads, seq_len, head_size]
+        # 如果当前序列长度超过已有缓存，就扩展 cos/sin cache。
         if seq_len > self.max_seq_len_cached:
             self._set_cos_sin_cache(seq_len=seq_len, device=x.device, dtype=x.dtype)
 
@@ -264,6 +297,8 @@ class LlamaDynamicNTKScalingRotaryEmbedding(LlamaRotaryEmbedding):
 
 
 def rotate_half(x):
+    """RoPE 的基础操作：把向量后一半和前一半交换并改变符号。"""
+
     """Rotates half the hidden dims of the input."""
     x1 = x[..., : x.shape[-1] // 2]
     x2 = x[..., x.shape[-1] // 2 :]
@@ -271,6 +306,12 @@ def rotate_half(x):
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids, unsqueeze_dim=1):
+    """把 RoPE 应用到 Q/K 上。
+
+    q/k 是 attention 的 query/key；position_ids 指出每个 token 的位置。
+    经过这个函数后，Q/K 中就带有位置信息。
+    """
+
     """Applies Rotary Position Embedding to the query and key tensors.
 
     Args:
@@ -299,6 +340,12 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids, unsqueeze_dim=1):
 
 
 class LlamaMLP(nn.Module):
+    """LLaMA decoder block 里的前馈网络。
+
+    Transformer 每层通常包含 attention + MLP。attention 负责混合不同 token 的
+    信息，MLP 负责对每个 token 的 hidden state 做非线性变换。
+    """
+
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -310,6 +357,11 @@ class LlamaMLP(nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
 
     def forward(self, x):
+        """执行 gated MLP。
+
+        LLaMA 使用 gate_proj 和 up_proj 两路相乘，再经过 down_proj 投回 hidden_size。
+        """
+
         if self.config.pretraining_tp > 1:
             slice = self.intermediate_size // self.config.pretraining_tp
             gate_proj_slices = self.gate_proj.weight.split(slice, dim=0)
@@ -344,6 +396,12 @@ class LlamaMLP(nn.Module):
 
 
 def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
+    """把 KV heads 复制到 query heads 数量。
+
+    LLaMA 常用 GQA/MQA：Q head 数量多，KV head 数量少。attention 计算前需要把
+    KV head repeat 到和 Q head 分组匹配。
+    """
+
     """
     This is the equivalent of torch.repeat_interleave(x, dim=1, repeats=n_rep). The hidden states go from (batch,
     num_key_value_heads, seqlen, head_dim) to (batch, num_attention_heads, seqlen, head_dim)
@@ -459,6 +517,11 @@ class LlamaAttention(nn.Module):
 
         bsz, q_len, _ = hidden_states.size()
 
+        # 1. hidden_states 经过三个线性层，分别得到 Q/K/V。
+        # 形状变化大致是：
+        #   hidden_states: [B, L, hidden_size]
+        #   query_states: [B, L, num_heads * head_dim]
+        #   key/value:    [B, L, num_kv_heads * head_dim]
         if self.config.pretraining_tp > 1:
             key_value_slicing = (
                 self.num_key_value_heads * self.head_dim
@@ -492,6 +555,8 @@ class LlamaAttention(nn.Module):
             key_states = self.k_proj(hidden_states)
             value_states = self.v_proj(hidden_states)
 
+        # 2. reshape 成 attention 常用格式 [B, H, L, C]。
+        # B=batch, H=head 数, L=token 数, C=head_dim。
         query_states = query_states.view(
             bsz, q_len, self.num_heads, self.head_dim
         ).transpose(1, 2)
@@ -507,7 +572,9 @@ class LlamaAttention(nn.Module):
             if self.compress_config is None:
                 kv_seq_len += past_key_value[0].shape[-2]
             else:
+                # ZipCache 压缩对象用 seq_length 记录它保存了多少历史 token。
                 kv_seq_len += past_key_value[0].seq_length
+        # 3. 根据总 KV 长度生成 RoPE cos/sin，并把位置编码应用到 Q/K。
         cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)
         query_states, key_states = apply_rotary_pos_emb(
             query_states, key_states, cos, sin, position_ids
@@ -806,9 +873,11 @@ class MixedLlamaAttention(nn.Module):
                 key_states = torch.cat([prev_keys, key_states], dim=2)
                 value_states = torch.cat([prev_values, value_states], dim=2)
             else:
+                # 普通 HuggingFace 路径：历史 KV 本来就是 tensor，直接拼接。
                 key_states = torch.cat([past_key_value[0], key_states], dim=2)
                 value_states = torch.cat([past_key_value[1], value_states], dim=2)
 
+        # 4. 如果 KV head 数少于 Q head 数，复制 KV head 以匹配 attention 计算。
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
@@ -821,6 +890,8 @@ class MixedLlamaAttention(nn.Module):
             probe_ids = torch.cat([torch.arange(int(q_len-0.05*q_len), q_len), \
                 torch.randint(0, int(q_len-0.05*q_len), (int(0.05*q_len), ))]) ## use rand + recent tokens
             
+            # probe_query_states 只取少量 query token，用它们估计每个历史 token
+            # 的整体重要性，避免完整 attention 统计带来过大开销。
             probe_query_states = query_states[:,:,probe_ids,:]
             attn_weights = torch.matmul(probe_query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
 
@@ -842,6 +913,7 @@ class MixedLlamaAttention(nn.Module):
             self.unimportant_ids_k = token_attn_sum.topk(int(self.compress_config['k_unimportant_ratio']*q_len), dim=-1, largest=False).indices
             self.unimportant_ids_v = self.unimportant_ids_k
         else:
+            # q_len == 1 基本表示 decode 阶段：每次只处理新生成的一个 token。
             self.counter += 1
 
         if self.counter != 0 and self.counter % self.compress_config["streaming_gap"] == 0: ## need compress every streaming_gap tokens
@@ -862,6 +934,8 @@ class MixedLlamaAttention(nn.Module):
 
         input_dtype = query_states.dtype
         if input_dtype == torch.float32:
+            # 某些层可能把 hidden state 静默提升到 float32。FlashAttention 通常
+            # 希望输入是 fp16/bf16，所以这里转回模型权重 dtype。
             if torch.is_autocast_enabled():
                 target_dtype = torch.get_autocast_gpu_dtype()
             # Handle the case where the model is quantized
@@ -881,6 +955,8 @@ class MixedLlamaAttention(nn.Module):
             value_states = value_states.to(target_dtype)
 
         # Reashape to the expected shape for Flash Attention
+        # FlashAttention 期望输入格式是 [B, L, H, C]，而前面普通 attention
+        # 计算用的是 [B, H, L, C]。
         query_states = query_states.transpose(1, 2)
         key_states = key_states.transpose(1, 2)
         value_states = value_states.transpose(1, 2)
@@ -918,10 +994,13 @@ class MixedLlamaAttention(nn.Module):
             attn_weights = None
 
         # Reashape back for kv cache
+        # attention 输出算完后，还需要把 K/V 变回 [B, H, L, C]，交给压缩对象保存。
         query_states = query_states.transpose(1, 2)
         key_states = key_states.transpose(1, 2)
         value_states = value_states.transpose(1, 2)
         # Reduce head
+        # 前面 repeat_kv 扩展了 KV head。保存 cache 时只需要原始 KV head，
+        # 所以这里把重复出来的组压回去。
         key_states = key_states.reshape(bsz, self.num_heads//self.num_key_value_groups, self.num_key_value_groups, kv_seq_len, -1)[:,:,0,:,:].squeeze_(2)
         value_states = value_states.reshape(bsz, self.num_heads//self.num_key_value_groups, self.num_key_value_groups, kv_seq_len, -1)[:,:,0,:,:].squeeze_(2)
 
@@ -932,6 +1011,9 @@ class MixedLlamaAttention(nn.Module):
                     past_key_union = MixedPrecisionCompressUnion(compress_kwargs=self.compress_config)
 
                     v_compress_config = {}
+                    # Value cache 可以使用和 Key cache 不同的压缩模式/bit 数。
+                    # demo 中 Key 默认 mixed_channelwiseQ，Value 默认
+                    # channel_separate_mixed_tokenwiseQ。
                     v_compress_config["compress_mode"] = self.compress_config["v_compress_mode"]
                     v_compress_config["quantize_bit_important"] = self.compress_config["v_quantize_bit_important"]
                     v_compress_config["quantize_bit_unimportant"] = self.compress_config["v_quantize_bit_unimportant"]
@@ -1671,6 +1753,12 @@ class LlamaModel(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutputWithPast]:
+        """执行 LLaMA 主体 forward。
+
+        这个函数不直接做 logits，它只输出最后一层 hidden_states 和可选 cache。
+        MyLlamaForCausalLM 会在外面接 lm_head，把 hidden_states 转成词表 logits。
+        """
+
         output_attentions = (
             output_attentions
             if output_attentions is not None
@@ -1688,6 +1776,8 @@ class LlamaModel(LlamaPreTrainedModel):
         )
 
         # retrieve input_ids and inputs_embeds
+        # input_ids 是 token id；inputs_embeds 是已经查表后的 embedding。
+        # 两者只能传一个，否则模型不知道应该以哪个为准。
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
                 "You cannot specify both input_ids and inputs_embeds at the same time"
@@ -1706,6 +1796,8 @@ class LlamaModel(LlamaPreTrainedModel):
             else:
                 past_key_values_length = past_key_values[0][0].seq_length
         if position_ids is None:
+            # 如果外部没有传 position_ids，就根据历史 cache 长度自动生成。
+            # decode 阶段 past_key_values_length > 0，新 token 的 position 会接在历史后面。
             device = input_ids.device if input_ids is not None else inputs_embeds.device
             position_ids = torch.arange(
                 past_key_values_length,
@@ -1716,6 +1808,7 @@ class LlamaModel(LlamaPreTrainedModel):
             position_ids = position_ids.unsqueeze(0)
 
         if inputs_embeds is None:
+            # 把 token id 查 embedding 表，得到 [B, L, hidden_size]。
             inputs_embeds = self.embed_tokens(input_ids)
 
         if getattr(self.config, "_flash_attn_2_enabled", False):
@@ -1735,6 +1828,7 @@ class LlamaModel(LlamaPreTrainedModel):
             )
 
         # embed positions
+        # LLaMA 的位置信息不在这里加，而是在 attention 里通过 RoPE 加到 Q/K。
         hidden_states = inputs_embeds
 
         if self.gradient_checkpointing and self.training:
@@ -1745,6 +1839,8 @@ class LlamaModel(LlamaPreTrainedModel):
                 use_cache = False
 
         # decoder layers
+        # 逐层执行 Transformer block。每层会接收自己对应的 past_key_value，
+        # 并返回更新后的 cache。
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
@@ -1779,6 +1875,7 @@ class LlamaModel(LlamaPreTrainedModel):
             hidden_states = layer_outputs[0]
 
             if use_cache:
+                # layer_outputs 中包含这一层新的 past_key_value。
                 next_decoder_cache += (layer_outputs[2 if output_attentions else 1],)
 
             if output_attentions:
@@ -1805,21 +1902,55 @@ class LlamaModel(LlamaPreTrainedModel):
         )
 
 class MyLlamaModel(LlamaPreTrainedModel):
-    """
-    Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`LlamaDecoderLayer`]
+    """ZipCache 版本的 LLaMA 主干网络。
+
+    这个类对应 HuggingFace 原版 LlamaModel，但把每一层 decoder layer 换成了
+    MyLlamaDecoderLayer。MyLlamaDecoderLayer 内部使用 MixedLlamaAttention，
+    因此能够把每层 attention 的 past_key_value 压缩保存。
+
+    它本身不负责输出词表 logits，也不负责采样下一个 token；这些工作由外层
+    MyLlamaForCausalLM 完成。本类只负责：
+    - 把 input_ids 转成 embedding；
+    - 准备 position_ids 和 attention_mask；
+    - 逐层执行 decoder layer；
+    - 收集每层返回的新 KV cache；
+    - 返回最后一层 hidden_states。
 
     Args:
-        config: LlamaConfig
+        config: HuggingFace LlamaConfig，描述模型层数、hidden_size、head 数等结构参数。
+        compress_config: ZipCache 压缩配置。为 None 时退化为普通 KV cache；
+            非 None 时每层 attention 会使用 mixed precision KV cache 压缩。
     """
 
     def __init__(self, config: LlamaConfig, compress_config=None):
+        """创建 ZipCache LLaMA 主体。
+
+        这个构造函数只搭建网络结构，不执行推理：
+        1. 创建 token embedding；
+        2. 创建多层 MyLlamaDecoderLayer；
+        3. 创建最终 RMSNorm；
+        4. 保存 compress_config，供 forward 判断 past_key_values 的格式。
+        """
+
         super().__init__(config)
+
+        # padding_idx 是 padding token 的 id。Embedding 层可以用它知道哪些位置是
+        # padding。不是所有 LLaMA 模型都有 pad token，具体取决于 config。
         self.padding_idx = config.pad_token_id
+
+        # vocab_size 是词表大小，也就是 token id 的取值范围。
         self.vocab_size = config.vocab_size
 
+        # token embedding 表：把离散 token id 转成连续向量。
+        # 输入 input_ids: [batch, seq_len]
+        # 输出 embeddings: [batch, seq_len, hidden_size]
         self.embed_tokens = nn.Embedding(
             config.vocab_size, config.hidden_size, self.padding_idx
         )
+
+        # Transformer decoder 层列表。
+        # ModuleList 会让 PyTorch 正确注册这些子模块的参数，后续 load_state_dict()
+        # 和 .cuda()/.half() 等操作都会递归作用到每一层。
         self.layers = nn.ModuleList(
             [
                 # 每个 decoder layer 都拿到同一份 compress_config，但实际压缩状态
@@ -1828,17 +1959,42 @@ class MyLlamaModel(LlamaPreTrainedModel):
                 for _ in range(config.num_hidden_layers)
             ]
         )
+
+        # 最后一层归一化。LLaMA 是 pre-norm 架构，每层内部也有 norm；
+        # 所有 decoder layer 结束后还会做一次最终 RMSNorm。
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
+        # gradient_checkpointing 用于训练时省显存。推理场景通常为 False。
+        # 如果训练时打开 checkpointing，use_cache 会被关闭，因为 cache 和重算
+        # checkpoint 的机制冲突。
         self.gradient_checkpointing = False
+
         # Initialize weights and apply final processing
+        # HuggingFace PreTrainedModel 的初始化收尾逻辑，会调用权重初始化钩子等。
         self.post_init()
+
+        # 保存 ZipCache 配置。forward 中会用它判断 past_key_values 是普通 tensor
+        # 还是 MixedPrecisionCompressUnion 这类压缩对象。
         self.compress_config = compress_config
 
     def get_input_embeddings(self):
+        """返回输入 embedding 层。
+
+        HuggingFace 通用接口会调用这个函数，例如：
+        - resize_token_embeddings() 调整词表大小；
+        - 外部想共享或替换 embedding 权重。
+        """
+
         return self.embed_tokens
 
     def set_input_embeddings(self, value):
+        """替换输入 embedding 层。
+
+        常见使用场景：
+        - 扩展 tokenizer 后重新创建 embedding；
+        - 做模型结构实验时替换 embedding 实现。
+        """
+
         self.embed_tokens = value
 
     @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
@@ -1854,43 +2010,83 @@ class MyLlamaModel(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutputWithPast]:
+        """执行 LLaMA 主体 forward。
+
+        参数说明：
+        - input_ids：token id，形状 [batch, seq_len]；
+        - attention_mask：padding/可见性 mask；
+        - position_ids：每个 token 的位置编号，不传时根据 cache 长度自动生成；
+        - past_key_values：历史 KV cache。普通模式是 tensor tuple；ZipCache 模式
+          是压缩对象 tuple；
+        - inputs_embeds：如果外部已经做了 embedding，可以直接传它而不传 input_ids；
+        - use_cache：是否返回新的 past_key_values。生成时通常必须为 True；
+        - output_attentions：是否返回每层 attention 权重；
+        - output_hidden_states：是否返回每层 hidden states；
+        - return_dict：是否返回 HuggingFace 的 BaseModelOutputWithPast 对象。
+
+        返回：
+        - last_hidden_state：最后一层输出，形状 [batch, seq_len, hidden_size]；
+        - past_key_values：每层新的 KV cache；
+        - hidden_states/attentions：可选调试输出。
+        """
+
+        # 如果调用者没有显式传 output_attentions，就使用 config 里的默认值。
         output_attentions = (
             output_attentions
             if output_attentions is not None
             else self.config.output_attentions
         )
+
+        # 是否保存每层 hidden_states。调试/可视化时有用，正常推理一般关闭。
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
+
+        # use_cache 控制是否返回 past_key_values。
+        # ZipCache 的压缩 cache 逻辑只有在 use_cache=True 时才会产生效果。
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
+        # HuggingFace 模型既支持 tuple 返回，也支持 dataclass 风格返回。
         return_dict = (
             return_dict if return_dict is not None else self.config.use_return_dict
         )
 
         # retrieve input_ids and inputs_embeds
+        # input_ids 和 inputs_embeds 二选一：
+        # - input_ids 是整数 token，需要本函数内部查 embedding；
+        # - inputs_embeds 已经是向量，不能再重复查 embedding。
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
                 "You cannot specify both input_ids and inputs_embeds at the same time"
             )
         elif input_ids is not None:
+            # batch_size：一次有多少条样本；
+            # seq_length：本次 forward 输入多少个 token。
             batch_size, seq_length = input_ids.shape[:2]
         elif inputs_embeds is not None:
             batch_size, seq_length = inputs_embeds.shape[:2]
         else:
             raise ValueError("You have to specify either input_ids or inputs_embeds")
 
+        # past_key_values_length 表示历史 cache 中已经保存了多少 token。
+        # prefill 阶段通常为 0；decode 阶段通常大于 0。
         past_key_values_length = 0
         if past_key_values is not None:
             if self.compress_config is None:
+                # 普通 KV cache：past_key_values[层][0] 是 key tensor，
+                # 形状一般是 [B, H, L, C]，其中 L 在第 2 维。
                 past_key_values_length = past_key_values[0][0].shape[2]
             else:
                 # 压缩对象没有普通 tensor 的 shape[2]，用 seq_length 记录已缓存
                 # 的 token 数。
                 past_key_values_length = past_key_values[0][0].seq_length
+
         if position_ids is None:
+            # 自动生成位置编号。
+            # 如果已有历史 cache，新 token 的位置必须从 past_key_values_length 开始，
+            # 否则 RoPE 位置编码会错位。
             device = input_ids.device if input_ids is not None else inputs_embeds.device
             position_ids = torch.arange(
                 past_key_values_length,
@@ -1901,10 +2097,13 @@ class MyLlamaModel(LlamaPreTrainedModel):
             position_ids = position_ids.unsqueeze(0)
 
         if inputs_embeds is None:
+            # 把 token id 查表成向量。后续所有 decoder layer 都处理这个向量表示。
             inputs_embeds = self.embed_tokens(input_ids)
 
         if getattr(self.config, "_flash_attn_2_enabled", False):
             # 2d mask is passed through the layers
+            # FlashAttention2 路径通常使用 2D mask：[batch, seq_len]。
+            # 如果 attention_mask 里没有 0，表示没有 padding，可以直接传 None。
             attention_mask = (
                 attention_mask
                 if (attention_mask is not None and 0 in attention_mask)
@@ -1912,6 +2111,9 @@ class MyLlamaModel(LlamaPreTrainedModel):
             )
         else:
             # 4d mask is passed through the layers
+            # 普通 attention 路径需要 4D causal mask，形状大致是：
+            # [batch, 1, query_len, key_value_len]。
+            # 这个 mask 同时处理因果约束和 padding。
             attention_mask = _prepare_4d_causal_attention_mask(
                 attention_mask,
                 (batch_size, seq_length),
@@ -1920,21 +2122,28 @@ class MyLlamaModel(LlamaPreTrainedModel):
             )
 
         # embed positions
+        # 这里变量名沿用 HuggingFace：hidden_states 是每一层都会更新的主激活。
+        # 注意：LLaMA 的位置信息不在这里加，而是在 attention 内通过 RoPE 加到 Q/K。
         hidden_states = inputs_embeds
 
         if self.gradient_checkpointing and self.training:
             if use_cache:
+                # 训练 checkpointing 会在反向传播时重算前向图；KV cache 是推理优化，
+                # 两者同时开启会导致语义不一致，所以这里强制关掉 cache。
                 logger.warning_once(
                     "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
                 )
                 use_cache = False
 
         # decoder layers
+        # 下面开始逐层执行 Transformer decoder。
+        # 每一层输入 hidden_states，输出新的 hidden_states，以及可选的新 cache。
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
         for idx, decoder_layer in enumerate(self.layers):
             if output_hidden_states:
+                # 保存进入当前层之前的 hidden_states，便于调试/分析。
                 all_hidden_states += (hidden_states,)
 
             past_key_value = (
@@ -1944,6 +2153,7 @@ class MyLlamaModel(LlamaPreTrainedModel):
             # MixedPrecisionCompressUnion 对象。
 
             if self.gradient_checkpointing and self.training:
+                # 训练省显存路径：不保存中间激活，反向传播时重新计算。
                 layer_outputs = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
@@ -1954,6 +2164,9 @@ class MyLlamaModel(LlamaPreTrainedModel):
                     use_cache,
                 )
             else:
+                # 正常推理/训练路径：直接调用当前 decoder layer。
+                # MyLlamaDecoderLayer 内部会调用 MixedLlamaAttention，从而触发
+                # ZipCache 的解压历史 KV、计算 attention、重新压缩 KV。
                 layer_outputs = decoder_layer(
                     hidden_states,
                     attention_mask=attention_mask,
@@ -1963,27 +2176,41 @@ class MyLlamaModel(LlamaPreTrainedModel):
                     use_cache=use_cache,
                 )
 
+            # layer_outputs[0] 是当前层输出，作为下一层输入。
             hidden_states = layer_outputs[0]
 
             if use_cache:
+                # 如果 output_attentions=True，layer_outputs 的布局是：
+                #   (hidden_states, attn_weights, present_key_value)
+                # 否则布局是：
+                #   (hidden_states, present_key_value)
+                # 所以这里根据 output_attentions 选择 cache 所在位置。
                 next_decoder_cache += (layer_outputs[2 if output_attentions else 1],)
 
             if output_attentions:
+                # 保存当前层 attention 权重，通常只在分析模型行为时使用。
                 all_self_attns += (layer_outputs[1],)
 
+        # 所有 decoder layer 结束后做最终 RMSNorm。
         hidden_states = self.norm(hidden_states)
 
         # add hidden states from the last decoder layer
         if output_hidden_states:
+            # 把最终 norm 后的 hidden_states 也保存进去。
             all_hidden_states += (hidden_states,)
 
+        # use_cache=False 时不返回 cache；use_cache=True 时返回每层新 cache。
         next_cache = next_decoder_cache if use_cache else None
+
         if not return_dict:
+            # tuple 返回模式：过滤掉 None 字段，保持 HuggingFace 兼容。
             return tuple(
                 v
                 for v in [hidden_states, next_cache, all_hidden_states, all_self_attns]
                 if v is not None
             )
+
+        # dataclass 返回模式：字段名更清晰，是 HuggingFace 默认推荐格式。
         return BaseModelOutputWithPast(
             last_hidden_state=hidden_states,
             past_key_values=next_cache,
@@ -2087,6 +2314,7 @@ class MyLlamaForCausalLM(LlamaPreTrainedModel):
         )
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
+        # 先跑 LLaMA 主体，得到每个 token 的 hidden state。
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -2100,6 +2328,8 @@ class MyLlamaForCausalLM(LlamaPreTrainedModel):
         )
 
         hidden_states = outputs[0]
+        # lm_head 把 hidden state 投影到词表大小，得到每个词的 logits。
+        # logits 越大，表示模型越倾向于生成这个 token。
         if self.config.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(
                 self.vocab_size // self.config.pretraining_tp, dim=0
@@ -2115,6 +2345,8 @@ class MyLlamaForCausalLM(LlamaPreTrainedModel):
 
         loss = None
         if labels is not None:
+            # 训练时才会传 labels。自回归语言模型用第 n 个 token 预测第 n+1 个 token，
+            # 所以 logits 和 labels 都要错开一位。
             # Shift so that tokens < n predict n
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
@@ -2146,17 +2378,31 @@ class MyLlamaForCausalLM(LlamaPreTrainedModel):
         inputs_embeds=None,
         **kwargs,
     ):
+        """给 HuggingFace generate() 使用的输入整理函数。
+
+        generate() 会多次调用模型：
+        - 第一次输入完整 prompt；
+        - 后续如果已经有 past_key_values，只需要输入最新 token。
+
+        ZipCache 的特殊点是：past_key_values 可能不是 tensor，而是压缩对象。
+        因此这里需要同时支持 tensor.shape[2] 和 compressed_object.seq_length。
+        """
+
         if past_key_values is not None:
             if isinstance(past_key_values[0][0], torch.Tensor):
+                # 普通 HuggingFace cache：历史长度存在 tensor 第 2 维。
                 past_length = past_key_values[0][0].shape[2]
             else:
+                # ZipCache cache：历史长度由压缩对象记录。
                 past_length = past_key_values[0][0].seq_length
 
             # Some generation methods already pass only the last input ID
             if input_ids.shape[1] > past_length:
+                # input_ids 仍包含完整 prompt + 新 token，裁掉已在 cache 中的历史部分。
                 remove_prefix_length = past_length
             else:
                 # Default to old behavior: keep only final ID
+                # 有些 generate 策略已经只传了较短输入，此时保留最后一个 token。
                 remove_prefix_length = input_ids.shape[1] - 1
 
             input_ids = input_ids[:, remove_prefix_length:]
@@ -2164,12 +2410,15 @@ class MyLlamaForCausalLM(LlamaPreTrainedModel):
         position_ids = kwargs.get("position_ids", None)
         if attention_mask is not None and position_ids is None:
             # create position_ids on the fly for batch generation
+            # attention_mask 里 1 表示真实 token，0 表示 padding。cumsum 后可以得到
+            # 每个真实 token 的位置编号。
             position_ids = attention_mask.long().cumsum(-1) - 1
             position_ids.masked_fill_(attention_mask == 0, 1)
             if past_key_values:
                 position_ids = position_ids[:, -input_ids.shape[1] :]
 
         # if `inputs_embeds` are passed, we only want to use them in the 1st generation step
+        # inputs_embeds 只在第一步使用；后续 decode 直接用 input_ids + cache。
         if inputs_embeds is not None and past_key_values is None:
             model_inputs = {"inputs_embeds": inputs_embeds}
         else:
@@ -2187,6 +2436,13 @@ class MyLlamaForCausalLM(LlamaPreTrainedModel):
 
     @staticmethod
     def _reorder_cache(past_key_values, beam_idx):
+        """beam search 时重排 cache。
+
+        beam search 会保留多个候选序列，候选顺序变化时，每层 cache 也要按 beam_idx
+        同步重排。注意：这里原始写法假设 cache 是 tensor；如果用 ZipCache 压缩对象
+        做 beam search，可能还需要额外适配压缩对象内部状态。
+        """
+
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
