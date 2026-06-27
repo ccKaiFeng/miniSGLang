@@ -194,9 +194,25 @@ class FlashInferBackend(BaseAttnBackend):
         assert isinstance(metadata, FIMetadata)
         self._initialize_metadata_once(metadata)
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
+        if (manager := get_global_ctx().zipcache_manager) is not None:
+            manager.before_attention(
+                q=q,
+                layer_id=layer_id,
+                batch=batch,
+                k_cache=self.kvcache.k_cache(layer_id),
+                v_cache=self.kvcache.v_cache(layer_id),
+            )
         kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
         kv_cache = (_flatten_cache(kv_cache[0]), _flatten_cache(kv_cache[1]))
-        return metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
+        output = metadata.wrapper.run(q=q, paged_kv_cache=kv_cache)
+        if manager is not None:
+            manager.after_attention(
+                layer_id=layer_id,
+                batch=batch,
+                k_cache=self.kvcache.k_cache(layer_id),
+                v_cache=self.kvcache.v_cache(layer_id),
+            )
+        return output
 
     def prepare_metadata(self, batch: Batch) -> None:
         reqs = batch.padded_reqs

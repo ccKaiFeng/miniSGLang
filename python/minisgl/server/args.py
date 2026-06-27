@@ -282,6 +282,61 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         help="The MoE backend to use.",
     )
 
+    parser.add_argument(
+        "--enable-zipcache-v1",
+        action="store_true",
+        default=ServerArgs.enable_zipcache_v1,
+        help="Enable experimental ZipCache v1 mixed-precision KV cache compression.",
+    )
+    parser.add_argument(
+        "--zipcache-unimportant-ratio",
+        type=float,
+        default=ServerArgs.zipcache_unimportant_ratio,
+        help="The fraction of KV tokens quantized with the lower ZipCache bit width.",
+    )
+    parser.add_argument(
+        "--zipcache-k-important-bit",
+        type=int,
+        default=ServerArgs.zipcache_k_important_bit,
+        help="Quantization bit width for salient Key cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-k-unimportant-bit",
+        type=int,
+        default=ServerArgs.zipcache_k_unimportant_bit,
+        help="Quantization bit width for non-salient Key cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-v-important-bit",
+        type=int,
+        default=ServerArgs.zipcache_v_important_bit,
+        help="Quantization bit width for salient Value cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-v-unimportant-bit",
+        type=int,
+        default=ServerArgs.zipcache_v_unimportant_bit,
+        help="Quantization bit width for non-salient Value cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-streaming-gap",
+        type=int,
+        default=ServerArgs.zipcache_streaming_gap,
+        help="Refresh ZipCache saliency every N decode steps.",
+    )
+    parser.add_argument(
+        "--zipcache-protect-recent-tokens",
+        type=int,
+        default=ServerArgs.zipcache_protect_recent_tokens,
+        help="Always keep the most recent N tokens out of the low-bit group.",
+    )
+    parser.add_argument(
+        "--zipcache-stats-interval",
+        type=float,
+        default=ServerArgs.zipcache_stats_interval,
+        help="Seconds between ZipCache v1 stats logs. Set <= 0 to disable periodic logs.",
+    )
+
     # shell 模式：不启动 HTTP 服务，而是在当前终端里交互聊天。
     parser.add_argument(
         "--shell-mode",
@@ -301,6 +356,11 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         kwargs["cuda_graph_max_bs"] = 1
         kwargs["max_running_req"] = 1
         kwargs["silent_output"] = True
+
+    if kwargs["enable_zipcache_v1"]:
+        # ZipCache v1 在 attention 前后执行 Python/CPU 压缩恢复逻辑，不适合被
+        # CUDA Graph capture 固化；先关闭 graph，保证运行语义清晰。
+        kwargs["cuda_graph_max_bs"] = 0
 
     # 展开用户目录路径，例如 ~/models/qwen。
     if kwargs["model_path"].startswith("~"):

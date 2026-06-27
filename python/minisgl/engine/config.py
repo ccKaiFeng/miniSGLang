@@ -60,6 +60,17 @@ class EngineConfig:
     max_seq_len_override: int | None = None
     num_page_override: int | None = None  # if not None, will override the number of pages
 
+    # ZipCache v1 experimental runtime compression. Disabled by default.
+    enable_zipcache_v1: bool = False
+    zipcache_unimportant_ratio: float = 0.4
+    zipcache_k_important_bit: int = 4
+    zipcache_k_unimportant_bit: int = 2
+    zipcache_v_important_bit: int = 4
+    zipcache_v_unimportant_bit: int = 2
+    zipcache_streaming_gap: int = 100
+    zipcache_protect_recent_tokens: int = 1
+    zipcache_stats_interval: float = 30.0
+
     @cached_property
     def hf_config(self):
         """加载 HuggingFace config，并缓存结果。"""

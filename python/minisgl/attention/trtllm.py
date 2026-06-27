@@ -66,10 +66,18 @@ class TensorRTLLMBackend(BaseAttnBackend):
         metadata = batch.attn_metadata
         assert isinstance(metadata, TRTLLMMetadata)
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
+        if (manager := get_global_ctx().zipcache_manager) is not None:
+            manager.before_attention(
+                q=q,
+                layer_id=layer_id,
+                batch=batch,
+                k_cache=self.kvcache.k_cache(layer_id),
+                v_cache=self.kvcache.v_cache(layer_id),
+            )
         kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
 
         if batch.is_prefill:
-            return trtllm_batch_context_with_kv_cache(
+            output = trtllm_batch_context_with_kv_cache(
                 query=q,
                 kv_cache=kv_cache,
                 workspace_buffer=self.workspace_buffer,
@@ -86,7 +94,7 @@ class TensorRTLLMBackend(BaseAttnBackend):
                 out_dtype=q.dtype,
             )
         else:
-            return trtllm_batch_decode_with_kv_cache(
+            output = trtllm_batch_decode_with_kv_cache(
                 query=q,
                 kv_cache=kv_cache,
                 workspace_buffer=self.workspace_buffer,
@@ -98,6 +106,14 @@ class TensorRTLLMBackend(BaseAttnBackend):
                 kv_layout="NHD",
                 out_dtype=q.dtype,
             )
+        if manager is not None:
+            manager.after_attention(
+                layer_id=layer_id,
+                batch=batch,
+                k_cache=self.kvcache.k_cache(layer_id),
+                v_cache=self.kvcache.v_cache(layer_id),
+            )
+        return output
 
     def prepare_metadata(self, batch: Batch) -> None:
         reqs = batch.padded_reqs

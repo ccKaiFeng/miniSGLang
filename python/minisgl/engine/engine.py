@@ -117,6 +117,26 @@ class Engine:
             device=self.device,
         )
 
+        self.zipcache_manager = None
+        if config.enable_zipcache_v1:
+            from minisgl.zipcache import ZipCacheV1Manager
+
+            self.zipcache_manager = ZipCacheV1Manager(
+                config=config,
+                kv_pool=self.kv_cache,
+                page_table=self.page_table,
+            )
+            self.ctx.zipcache_manager = self.zipcache_manager
+            logger.info_rank0(
+                "[ZipCacheV1] enabled: k=%s/%s bits, v=%s/%s bits, "
+                "unimportant_ratio=%s",
+                config.zipcache_k_important_bit,
+                config.zipcache_k_unimportant_bit,
+                config.zipcache_v_important_bit,
+                config.zipcache_v_unimportant_bit,
+                config.zipcache_unimportant_ratio,
+            )
+
         # ======================= Attention & MoE backend initialization ========================
         # 创建 attention backend，例如 FlashAttention、FlashInfer、TensorRT-LLM。
         self.ctx.attn_backend = self.attn_backend = create_attention_backend(
@@ -295,6 +315,8 @@ class Engine:
     def shutdown(self) -> None:
         """释放 Engine 持有的通信和 graph 资源。"""
 
+        if self.zipcache_manager is not None:
+            self.zipcache_manager.log_stats()
         self.graph_runner.destroy_cuda_graphs()
         torch.distributed.destroy_process_group()
         destroy_distributed()
@@ -332,3 +354,8 @@ def _adjust_config(config: EngineConfig):
         # MoE 模型默认使用 fused MoE backend。
         override("moe_backend", "fused")
         logger.info_rank0(f"Auto-selected MoE backend: {config.moe_backend}")
+
+    if config.enable_zipcache_v1:
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        logger.warning_rank0("CUDA Graph is disabled for ZipCache v1")

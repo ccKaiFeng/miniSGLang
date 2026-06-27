@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, List, Literal
+from typing import TYPE_CHECKING, Any, List, Literal
 
 import torch
 
@@ -208,6 +208,7 @@ class Context:
     attn_backend: BaseAttnBackend = field(init=False)
     moe_backend: BaseMoeBackend = field(init=False)
     kv_cache: BaseKVCachePool = field(init=False)
+    zipcache_manager: Any | None = field(default=None, init=False)
     _batch: Batch | None = field(default=None, init=False)
 
     @property

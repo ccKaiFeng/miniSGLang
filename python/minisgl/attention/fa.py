@@ -64,7 +64,15 @@ class FlashAttentionBackend(BaseAttnBackend):
         metadata = batch.attn_metadata
         assert isinstance(metadata, FAMetadata)
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
-        return _fa_sgl_impl(
+        if (manager := get_global_ctx().zipcache_manager) is not None:
+            manager.before_attention(
+                q=q,
+                layer_id=layer_id,
+                batch=batch,
+                k_cache=self.kvcache.k_cache(layer_id),
+                v_cache=self.kvcache.v_cache(layer_id),
+            )
+        output = _fa_sgl_impl(
             q=q,
             k_cache=self.kvcache.k_cache(layer_id),
             v_cache=self.kvcache.v_cache(layer_id),
@@ -76,6 +84,14 @@ class FlashAttentionBackend(BaseAttnBackend):
             softmax_scale=self.scale,
             version=self.version,
         )
+        if manager is not None:
+            manager.after_attention(
+                layer_id=layer_id,
+                batch=batch,
+                k_cache=self.kvcache.k_cache(layer_id),
+                v_cache=self.kvcache.v_cache(layer_id),
+            )
+        return output
 
     def prepare_metadata(self, batch: Batch) -> None:
         reqs = batch.padded_reqs
