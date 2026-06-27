@@ -1,0 +1,8 @@
+{"id":"mixed_001","prompt":"用三句话解释什么是 KV cache。","max_tokens":64}
+{"id":"mixed_002","prompt":"请解释 paged KV cache 和普通连续 KV cache 的区别，并说明 page table 的作用。","max_tokens":96}
+{"id":"mixed_003","prompt":"背景：一个推理服务使用 scheduler 将多个请求组成 batch，prefill 处理 prompt，decode 每次生成一个 token。请分析 batch size 增大对吞吐和延迟的影响。","max_tokens":128}
+{"id":"mixed_004","prompt":"请给出一个实验计划，用来比较两个 LLM serving 分支的 TTFT、TPOT、吞吐、显存占用和输出一致性。要求包含步骤和注意事项。","max_tokens":160}
+{"id":"mixed_005","prompt":"下面是一段系统说明：服务端包含 FastAPI 前端、tokenizer worker、scheduler、engine、attention backend、detokenizer。请求先被 tokenize，再进入 prefill 队列，随后 decode，最后流式返回。请根据这段说明梳理端到端数据流。","max_tokens":192}
+{"id":"mixed_006","prompt":"请说明为什么在不修改 attention kernel 的前提下，压缩后的 KV cache 通常需要在 attention 计算前恢复成原始格式。","max_tokens":96}
+{"id":"mixed_007","prompt":"请从工程角度分析：如果一个算法把 KV cache 压缩到 CPU，再在每一层 attention 前解压回 GPU，可能对性能产生哪些正面和负面影响？","max_tokens":160}
+{"id":"mixed_008","prompt":"请用项目复盘的口吻总结一次性能优化实验，内容包括实验目标、实验方法、关键指标、异常现象、下一步计划。","max_tokens":192}

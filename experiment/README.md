@@ -124,7 +124,7 @@ PYTHONPATH=python python -m minisgl \
 git switch ZipCache
 
 PYTHONPATH=python python -m minisgl \
-  --model-path /path/to/model \
+  --model "/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-0___6B" \
   --host 0.0.0.0 \
   --port 30001 \
   --cache-type radix \
@@ -189,7 +189,8 @@ report.md
 python experiment/run_all_experiments.py \
   --mode zipcache \
   --base-url http://127.0.0.1:30001 \
-  --server-log zipcache_server.log
+  --server-log zipcache_server.log  \
+  --gpu-sample-interval 0.5 
 ```
 
 结果会保存到：
