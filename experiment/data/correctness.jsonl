@@ -1,0 +1,5 @@
+{"id":"correct_001","prompt":"请只回答最终数字：17 + 25 = ?","max_tokens":16}
+{"id":"correct_002","prompt":"请只回答最终数字：9 * 8 = ?","max_tokens":16}
+{"id":"correct_003","prompt":"请判断正误并简短说明：KV cache 可以减少 decode 阶段重复计算历史 token 的 K/V。","max_tokens":48}
+{"id":"correct_004","prompt":"请用一句话回答：TTFT 是什么指标？","max_tokens":48}
+{"id":"correct_005","prompt":"请按顺序输出三个词：prefill, decode, sample。不要添加额外解释。","max_tokens":32}
