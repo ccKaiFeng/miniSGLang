@@ -16,6 +16,7 @@ ZipCache 分支: http://127.0.0.1:30001
 ```text
 experiment/
 ├── README.md
+├── run_all_experiments.py
 ├── bench_openai_stream.py
 ├── compare_results.py
 ├── parse_zipcache_log.py
@@ -28,6 +29,7 @@ experiment/
 
 文件作用：
 
+- `run_all_experiments.py`：一键运行多组实验，把结果统一保存到 `experiment/logs/<时间>_<模式>/`。
 - `bench_openai_stream.py`：对 OpenAI 兼容 `/v1/chat/completions` 发流式请求，统计 TTFT、总延迟、吞吐和显存。
 - `compare_results.py`：对比 main 和 ZipCache 两份 benchmark 结果。
 - `parse_zipcache_log.py`：从 ZipCache 分支服务日志中提取 `[ZipCacheV1] stats`，汇总压缩率。
@@ -140,9 +142,94 @@ PYTHONPATH=python python -m minisgl \
 
 如果你只有一个工作目录，先测试 main，保存结果；再切换 ZipCache，启动同样模型和参数测试。
 
-## 4. 运行 benchmark
+## 4. 一键运行全部实验
 
-### 4.1 shared-prefix 性能测试
+你只需要先启动 miniSGLang 服务，然后在另一个终端执行一键脚本。
+
+### 4.1 测 main 分支
+
+如果 main 服务跑在 `30000`：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main \
+  --base-url http://127.0.0.1:30000
+```
+
+结果会保存到：
+
+```text
+experiment/logs/<时间>_main/
+```
+
+目录中包含：
+
+```text
+manifest.json
+shared_prefix.jsonl
+shared_prefix_summary.json
+shared_prefix.log
+mixed_length.jsonl
+mixed_length_summary.json
+mixed_length.log
+correctness.jsonl
+correctness_summary.json
+correctness.log
+all_results_summary.json
+report.md
+```
+
+其中 `report.md` 会说明当前运行在哪个模式下，以及每个实验的核心结果。
+
+### 4.2 测 ZipCache 分支
+
+如果 ZipCache 服务跑在 `30001`，并且服务端日志保存为 `zipcache_server.log`：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_server.log
+```
+
+结果会保存到：
+
+```text
+experiment/logs/<时间>_zipcache/
+```
+
+如果传入 `--server-log`，脚本还会自动解析 `[ZipCacheV1] stats`，生成：
+
+```text
+zipcache_stats_summary.json
+parse_zipcache_log.log
+```
+
+### 4.3 常用参数
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main \
+  --base-url http://127.0.0.1:30000 \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5 \
+  --timeout 600
+```
+
+参数说明：
+
+- `--mode`：本次实验模式标签，例如 `main` 或 `zipcache`。
+- `--base-url`：已经启动的 miniSGLang 服务地址。
+- `--log-root`：结果根目录，默认 `experiment/logs`。
+- `--server-log`：可选，ZipCache 服务端日志路径。
+- `--gpu-sample-interval`：显存采样间隔，单位秒；设为 `0` 可关闭。
+- `--timeout`：单个请求超时时间。
+
+## 5. 单独运行 benchmark
+
+如果你只想单独跑某一组 workload，可以直接调用 `bench_openai_stream.py`。
+
+### 5.1 shared-prefix 性能测试
 
 main：
 
@@ -180,7 +267,7 @@ python experiment/compare_results.py \
   --candidate experiment/results/zipcache_shared_prefix.jsonl
 ```
 
-### 4.2 mixed-length 性能测试
+### 5.2 mixed-length 性能测试
 
 把 dataset 换成：
 
@@ -190,7 +277,7 @@ experiment/data/mixed_length.jsonl
 
 其他命令相同。
 
-### 4.3 正确性冒烟测试
+### 5.3 正确性冒烟测试
 
 建议低并发、greedy、较短输出：
 
@@ -219,7 +306,7 @@ python experiment/compare_results.py \
   --show-text
 ```
 
-## 5. 实验记录建议
+## 6. 实验记录建议
 
 每组实验至少记录：
 
@@ -238,7 +325,7 @@ python experiment/compare_results.py \
 
 建议每组实验至少跑 3 次，取均值和 p50/p90/p99。
 
-## 6. 结果解读
+## 7. 结果解读
 
 如果 ZipCache 分支：
 
