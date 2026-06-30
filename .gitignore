@@ -10,6 +10,7 @@ __pycache__/
 # json files
 *.json
 *.jsonl
+!experiment/data/*.jsonl
 
 # profiling data
 *.nsys-rep

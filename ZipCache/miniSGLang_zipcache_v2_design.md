@@ -2036,8 +2036,13 @@ experiment/logs/<时间>_main/
 report.md
 all_results_summary.json
 shared_prefix_summary.json
+realistic_long_context_summary.json
+zipcache_restore_probe_summary.json
+zipcache_restore_pressure_summary.json
 mixed_length_summary.json
 correctness_summary.json
+gsm8k_correctness_summary.json
+gsm8k_correctness_eval.json
 ```
 
 ### 18.5 一键运行 ZipCache v2 测试
@@ -2051,7 +2056,7 @@ python experiment/run_all_experiments.py \
   --log-root experiment/logs \
   --server-log zipcache_v2_server.log \
   --gpu-sample-interval 0.5 \
-  --timeout 600
+  --timeout 1200
 ```
 
 结果会保存到：
@@ -2064,10 +2069,155 @@ experiment/logs/<时间>_zipcache_v2/
 
 - `report.md` 会记录本次运行模式和每组实验结果。
 - `--server-log` 用来保留服务端 ZipCache 日志路径，便于后续检查 `[ZipCacheV2] stats`。
-- 如果当前 `experiment/parse_zipcache_log.py` 只匹配 `[ZipCacheV1] stats`，则 v2 stats 需要先用 `grep` 手动查看：
+- 当前 `experiment/parse_zipcache_log.py` 已支持 `[ZipCacheV1] stats` 和 `[ZipCacheV2] stats`。如果 report 中没有解析到 v2 stats，可以先用 `grep` 手动确认服务端日志中是否存在 v2 输出：
 
 ```bash
 grep "\[ZipCacheV2\]" zipcache_v2_server.log
+grep "\[ZipCacheV2\] stats" zipcache_v2_server.log
+```
+
+### 18.5.1 更实际的长上下文 workload
+
+当前一键脚本已经不只跑短 prompt。为了让云服务器上能观察到更明显的 KV cache 显存压力，新增了：
+
+```text
+realistic_long_context
+```
+
+对应数据文件：
+
+```text
+experiment/data/realistic_long_context.jsonl
+```
+
+默认配置：
+
+```text
+rows = 12
+prompt_chars ~= 3000
+concurrency = 8
+repeat = 3
+max_tokens = 512
+```
+
+这组 workload 会产生 36 个长上下文请求，并发度为 8，输出长度也从原来的 96/128 提高到 512。它更适合观察：
+
+```text
+gpu_memory_used_mb_max
+gpu_memory_used_mb_avg
+TTFT / TPOT / E2E
+compressed_pool_used_bytes
+active_storage_compression_ratio
+num_demotions
+```
+
+单独运行方式：
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/realistic_long_context.jsonl \
+  --output experiment/results/zipcache_realistic_long_context.jsonl \
+  --summary experiment/results/zipcache_realistic_long_context_summary.json \
+  --concurrency 8 \
+  --repeat 3 \
+  --max-tokens 512 \
+  --gpu-sample-interval 0.5 \
+  --timeout 1200
+```
+
+main 分支也应使用同一数据集和同一参数运行，只把 `--base-url` 改成 main 服务地址。
+
+### 18.5.2 更强 restore workload：zipcache_restore_probe / zipcache_restore_pressure
+
+当前一键脚本会额外运行：
+
+```text
+zipcache_restore_probe
+zipcache_restore_pressure
+```
+
+对应数据文件：
+
+```text
+experiment/data/zipcache_restore_probe.jsonl
+experiment/data/zipcache_restore_pressure.jsonl
+```
+
+这组 workload 的目标不是测最高吞吐，而是专门验证 ZipCache v2 的 compressed KV restore 链路。它的设计特点是：
+
+- `zipcache_restore_probe`：1 条固定长 prompt，`concurrency=1`，`repeat=8`，`max_tokens=256`；
+- `zipcache_restore_pressure`：4 条共享超长前缀 prompt，平均约 4000 字符，`concurrency=1`，`repeat=6`，`max_tokens=384`；
+- 两组都采用顺序发送，优先制造“第一次请求结束 demote，后续请求再次访问相同或高度相同前缀”的条件。
+
+这样设计的原因是：ZipCache v2 当前在请求结束或 radix entry 变冷后执行 demote。要触发 compressed hit，必须让“后续请求”再次访问已经被 demote 的相同 prefix。如果使用高并发同时发请求，很多请求会在第一个请求 demote 之前就已经进入 prefill，反而不容易验证 restore。
+
+理想情况下，服务端日志应出现：
+
+```text
+[ZipCacheV2] demoted: ...
+[ZipCacheV2] restored: ...
+[ZipCacheV2] stats: {...}
+```
+
+并且 stats 中应看到：
+
+```text
+num_demotions > 0
+num_compressed_hits > 0
+num_restore_attempts > 0
+num_restore_success > 0
+```
+
+如果仍然出现：
+
+```text
+num_demotions > 0
+num_compressed_hits = 0
+num_restore_success = 0
+```
+
+说明当前 v2 已经完成压缩保存，但后续请求仍未命中 compressed radix entry。此时优先排查：
+
+- 服务是否带了 `--cache-type radix`；
+- 请求 prompt 是否完全相同；
+- demote 是否发生在请求结束后；
+- radix cache 是否因为 split / lock / eviction 逻辑没有返回 compressed node；
+- `CacheManager.match_req()` 是否调用了 `ZipCacheV2Manager.materialize_match()`。
+
+这组 workload 可以单独运行：
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/zipcache_restore_probe.jsonl \
+  --output experiment/results/zipcache_restore_probe.jsonl \
+  --summary experiment/results/zipcache_restore_probe_summary.json \
+  --concurrency 1 \
+  --repeat 8 \
+  --max-tokens 256 \
+  --gpu-sample-interval 0.5
+```
+
+更强的 restore 压力测试：
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/zipcache_restore_pressure.jsonl \
+  --output experiment/results/zipcache_restore_pressure.jsonl \
+  --summary experiment/results/zipcache_restore_pressure_summary.json \
+  --concurrency 1 \
+  --repeat 6 \
+  --max-tokens 384 \
+  --gpu-sample-interval 0.5
+```
+
+运行后检查：
+
+```bash
+grep "\[ZipCacheV2\] demoted" zipcache_v2_server.log
+grep "\[ZipCacheV2\] restored" zipcache_v2_server.log
 grep "\[ZipCacheV2\] stats" zipcache_v2_server.log
 ```
 
@@ -2097,6 +2247,32 @@ python experiment/compare_results.py \
   --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/shared_prefix.jsonl
 ```
 
+ZipCache v2 restore 强命中测试对比：
+
+```bash
+python experiment/compare_results.py \
+  --baseline experiment/logs/2026xxxx_xxxxxx_main/zipcache_restore_probe.jsonl \
+  --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/zipcache_restore_probe.jsonl
+```
+
+这组对比主要用于确认输出没有明显异常，以及观察 ZipCache v2 服务端 stats 中是否出现 `num_compressed_hits`、`num_restore_attempts` 和 `num_restore_success`。由于它是 `concurrency=1` 的顺序重复请求，不应该把它当成高并发吞吐压力测试。
+
+真实长上下文压力测试对比：
+
+```bash
+python experiment/compare_results.py \
+  --baseline experiment/logs/2026xxxx_xxxxxx_main/realistic_long_context.jsonl \
+  --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/realistic_long_context.jsonl
+```
+
+restore 压力测试对比：
+
+```bash
+python experiment/compare_results.py \
+  --baseline experiment/logs/2026xxxx_xxxxxx_main/zipcache_restore_pressure.jsonl \
+  --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/zipcache_restore_pressure.jsonl
+```
+
 mixed-length 对比：
 
 ```bash
@@ -2112,6 +2288,22 @@ python experiment/compare_results.py \
   --baseline experiment/logs/2026xxxx_xxxxxx_main/correctness.jsonl \
   --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/correctness.jsonl \
   --show-text
+```
+
+GSM8K 数字答案正确率对比：
+
+```bash
+cat experiment/logs/2026xxxx_xxxxxx_main/gsm8k_correctness_eval.json
+cat experiment/logs/2026xxxx_xxxxxx_zipcache_v2/gsm8k_correctness_eval.json
+```
+
+也可以单独对某次输出重新判分：
+
+```bash
+python experiment/evaluate_correctness.py \
+  --dataset experiment/data/gsm8k_correctness.jsonl \
+  --results experiment/logs/2026xxxx_xxxxxx_zipcache_v2/gsm8k_correctness.jsonl \
+  --output experiment/logs/2026xxxx_xxxxxx_zipcache_v2/gsm8k_correctness_eval.json
 ```
 
 ### 18.7 主要对比指标
@@ -2191,7 +2383,7 @@ active_compressed_storage_bytes
 
 ### 18.8 正确性判断
 
-ZipCache v2 是有损 KV 量化，所以输出不一定逐 token 完全等同 main。正确性建议分两层看：
+ZipCache v2 是有损 KV 量化，所以输出不一定逐 token 完全等同 main。正确性建议分三层看：
 
 1. **服务正确性**
 
@@ -2200,6 +2392,37 @@ ZipCache v2 是有损 KV 量化，所以输出不一定逐 token 完全等同 ma
 2. **输出质量**
 
    `correctness` workload 下，用 `--show-text` 对比 main 和 ZipCache v2 输出是否语义一致。
+
+3. **GSM8K 数字答案正确率**
+
+   `gsm8k_correctness` workload 来自：
+
+   ```text
+   ZipCache/ZipCache/asset/gsm8k_sample.txt
+   ```
+
+   生成后的数据文件是：
+
+   ```text
+   experiment/data/gsm8k_correctness.jsonl
+   ```
+
+   每条数据包含 `prompt` 和标准数字答案 `answer`。一键脚本会自动调用 `experiment/evaluate_correctness.py`，从模型输出中抽取最终数字答案，并生成：
+
+   ```text
+   gsm8k_correctness_eval.json
+   ```
+
+   判分规则：
+
+   ```text
+   1. 优先匹配 "The answer is <number>"
+   2. 如果没有该格式，则取输出文本中的最后一个数字
+   3. 与数据集 answer 字段精确比较
+   4. 输出 num_judged、num_correct、accuracy
+   ```
+
+   对比 main 和 ZipCache v2 时，重点看两者的 `accuracy` 差值。如果 ZipCache v2 的 `num_restore_success > 0`，但 GSM8K accuracy 明显低于 main，说明压缩/恢复可能影响了模型推理质量，需要进一步降低量化误差或限制 demote 策略。
 
 如果输出差异明显，可以尝试：
 
