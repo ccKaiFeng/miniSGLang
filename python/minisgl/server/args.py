@@ -289,6 +289,12 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         help="Enable experimental ZipCache v1 mixed-precision KV cache compression.",
     )
     parser.add_argument(
+        "--enable-zipcache-v2",
+        action="store_true",
+        default=ServerArgs.enable_zipcache_v2,
+        help="Enable experimental ZipCache v2 GPU prefix KV compression and restore.",
+    )
+    parser.add_argument(
         "--zipcache-unimportant-ratio",
         type=float,
         default=ServerArgs.zipcache_unimportant_ratio,
@@ -336,6 +342,18 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         default=ServerArgs.zipcache_stats_interval,
         help="Seconds between ZipCache v1 stats logs. Set <= 0 to disable periodic logs.",
     )
+    parser.add_argument(
+        "--zipcache-v2-compressed-pool-mb",
+        type=int,
+        default=ServerArgs.zipcache_v2_compressed_pool_mb,
+        help="Fixed GPU compressed pool size for ZipCache v2. 0 means derive from ratio.",
+    )
+    parser.add_argument(
+        "--zipcache-v2-compressed-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v2_compressed_pool_ratio,
+        help="Compressed pool bytes as a ratio of the original KV pool when MB is 0.",
+    )
 
     # shell 模式：不启动 HTTP 服务，而是在当前终端里交互聊天。
     parser.add_argument(
@@ -357,9 +375,13 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         kwargs["max_running_req"] = 1
         kwargs["silent_output"] = True
 
-    if kwargs["enable_zipcache_v1"]:
+    if kwargs["enable_zipcache_v1"] and kwargs["enable_zipcache_v2"]:
+        parser.error("--enable-zipcache-v1 and --enable-zipcache-v2 cannot be enabled together.")
+
+    if kwargs["enable_zipcache_v1"] or kwargs["enable_zipcache_v2"]:
         # ZipCache v1 在 attention 前后执行 Python/CPU 压缩恢复逻辑，不适合被
-        # CUDA Graph capture 固化；先关闭 graph，保证运行语义清晰。
+        # CUDA Graph capture 固化；v2 会动态 materialize prefix page。先关闭 graph，
+        # 保证实验语义清晰。
         kwargs["cuda_graph_max_bs"] = 0
 
     # 展开用户目录路径，例如 ~/models/qwen。

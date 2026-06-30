@@ -118,24 +118,38 @@ class Engine:
         )
 
         self.zipcache_manager = None
-        if config.enable_zipcache_v1:
-            from minisgl.zipcache import ZipCacheV1Manager
+        if config.enable_zipcache_v1 or config.enable_zipcache_v2:
+            if config.enable_zipcache_v1:
+                from minisgl.zipcache import ZipCacheV1Manager as ZipCacheManager
+            else:
+                from minisgl.zipcache import ZipCacheV2Manager as ZipCacheManager
 
-            self.zipcache_manager = ZipCacheV1Manager(
+            self.zipcache_manager = ZipCacheManager(
                 config=config,
                 kv_pool=self.kv_cache,
                 page_table=self.page_table,
             )
             self.ctx.zipcache_manager = self.zipcache_manager
-            logger.info_rank0(
-                "[ZipCacheV1] enabled: k=%s/%s bits, v=%s/%s bits, "
-                "unimportant_ratio=%s",
-                config.zipcache_k_important_bit,
-                config.zipcache_k_unimportant_bit,
-                config.zipcache_v_important_bit,
-                config.zipcache_v_unimportant_bit,
-                config.zipcache_unimportant_ratio,
-            )
+            if config.enable_zipcache_v1:
+                logger.info_rank0(
+                    "[ZipCacheV1] enabled: k=%s/%s bits, v=%s/%s bits, "
+                    "unimportant_ratio=%s",
+                    config.zipcache_k_important_bit,
+                    config.zipcache_k_unimportant_bit,
+                    config.zipcache_v_important_bit,
+                    config.zipcache_v_unimportant_bit,
+                    config.zipcache_unimportant_ratio,
+                )
+            else:
+                logger.info_rank0(
+                    "[ZipCacheV2] enabled: GPU prefix demotion, k=%s/%s bits, "
+                    "v=%s/%s bits, unimportant_ratio=%s",
+                    config.zipcache_k_important_bit,
+                    config.zipcache_k_unimportant_bit,
+                    config.zipcache_v_important_bit,
+                    config.zipcache_v_unimportant_bit,
+                    config.zipcache_unimportant_ratio,
+                )
 
         # ======================= Attention & MoE backend initialization ========================
         # 创建 attention backend，例如 FlashAttention、FlashInfer、TensorRT-LLM。
@@ -355,7 +369,7 @@ def _adjust_config(config: EngineConfig):
         override("moe_backend", "fused")
         logger.info_rank0(f"Auto-selected MoE backend: {config.moe_backend}")
 
-    if config.enable_zipcache_v1:
+    if config.enable_zipcache_v1 or config.enable_zipcache_v2:
         override("cuda_graph_bs", [])
         override("cuda_graph_max_bs", 0)
-        logger.warning_rank0("CUDA Graph is disabled for ZipCache v1")
+        logger.warning_rank0("CUDA Graph is disabled for ZipCache")

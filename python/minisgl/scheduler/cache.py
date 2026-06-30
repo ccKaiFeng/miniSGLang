@@ -26,7 +26,14 @@ if TYPE_CHECKING:
 class CacheManager:
     """Scheduler 侧 KV cache 管理器。"""
 
-    def __init__(self, num_pages: int, page_size: int, page_table: torch.Tensor, type: str):
+    def __init__(
+        self,
+        num_pages: int,
+        page_size: int,
+        page_table: torch.Tensor,
+        type: str,
+        zipcache_manager=None,
+    ):
         # The `_free_slots` follows a page-aligned manner. For example, if page_size = 2,
         # the `_free_slots` may look like [0, 2, 4, 6, ...], and each slot represents a page.
         device = page_table.device
@@ -43,6 +50,7 @@ class CacheManager:
         # page_table[table_idx, token_pos] = KV cache 物理 token index。
         self.page_table = page_table
         self.page_size = page_size
+        self.zipcache_manager = zipcache_manager
 
     def match_req(self, req: PendingReq) -> MatchResult:
         """查询请求 prompt 是否有可复用前缀缓存。
@@ -53,7 +61,19 @@ class CacheManager:
 
         input_len = req.input_len
         assert input_len > 0, "Input length must be greater than 0."
-        return self.prefix_cache.match_prefix(req.input_ids[: input_len - 1])
+        result = self.prefix_cache.match_prefix(req.input_ids[: input_len - 1])
+        if self.zipcache_manager is None or not hasattr(self.zipcache_manager, "materialize_match"):
+            return result
+        self.prefix_cache.lock_handle(result.cuda_handle)
+        try:
+            handle = self.zipcache_manager.materialize_match(
+                self.prefix_cache,
+                result.cuda_handle,
+                self,
+            )
+        finally:
+            self.prefix_cache.lock_handle(result.cuda_handle, unlock=True)
+        return MatchResult(handle)
 
     @property
     def available_size(self) -> int:
@@ -134,6 +154,22 @@ class CacheManager:
         if finished:  # this tail part should be freed
             # 请求结束，不能插入 prefix cache 的尾部也释放。
             self._free(page_indices[new_handle.cached_len :])
+            if (
+                self.zipcache_manager is not None
+                and getattr(self.zipcache_manager.config, "zipcache_v2_demote_on_finish", False)
+                and hasattr(self.zipcache_manager, "demote_node")
+                and hasattr(new_handle, "node")
+            ):
+                # v2 初版只 demote ref_count == 0 的 finished prefix 叶子节点。
+                # 成功后再释放原 normal fp16 page，保证压缩失败不影响原逻辑。
+                node = new_handle.node
+                demoted = self.zipcache_manager.demote_node(node)
+                if demoted is not None:
+                    self.prefix_cache.mark_node_compressed(
+                        node,
+                        self.zipcache_manager.entry_by_node_uuid[node.uuid],
+                    )
+                    self._free(demoted)
         else:  # keep the tail part, update the handle
             # 请求还要继续 decode，更新 handle 并锁定，防止被驱逐。
             req.cache_handle = new_handle
@@ -194,6 +230,14 @@ class CacheManager:
 
         if len(indices) > 0:
             self.free_slots = torch.cat([self.free_slots, indices[:: self.page_size]])
+
+    def allocate_token_indices(self, length: int) -> torch.Tensor:
+        """为 restore 分配 length 个 token 位置，并返回可直接写入 page_table 的 indices。"""
+
+        if length <= 0:
+            return torch.empty(0, dtype=torch.int32, device=self.device)
+        needed_pages = div_ceil(length, self.page_size)
+        return self._page_to_token(self._allocate(needed_pages))[:length]
 
     def _page_to_token(self, pages: torch.Tensor) -> torch.Tensor:
         """把 page 起始 index 展开成 token index。"""
