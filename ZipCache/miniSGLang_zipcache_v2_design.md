@@ -1913,7 +1913,8 @@ ZipCache v2: http://127.0.0.1:30001
 git switch main
 
 PYTHONPATH=python python -m minisgl \
-  --model-path /path/to/model \
+  --model-path /root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-0___6B \
+  --num-pages 370000 \
   --host 0.0.0.0 \
   --port 30000 \
   --cache-type radix \
@@ -1936,10 +1937,11 @@ PYTHONPATH=python python -m minisgl \
 git switch ZipCache
 
 PYTHONPATH=python python -m minisgl \
-  --model-path /path/to/model \
+  --model-path /root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-0___6B \
   --host 0.0.0.0 \
   --port 30001 \
   --cache-type radix \
+  --num-pages 370000 \
   --max-running-requests 16 \
   --max-prefill-length 4096 \
   --enable-zipcache-v2 \
@@ -1952,6 +1954,31 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-stats-interval 10 \
   2>&1 | tee zipcache_v2_server.log
 ```
+
+这里建议显式设置 `--num-pages`，用它限制原始 fp16/bf16 normal KV pool 的大小，为 ZipCache v2 的 compressed pool 留出显存。
+
+例如云服务器日志中出现：
+
+```text
+Allocating 652296 tokens for KV cache, K + V = 69.67 GiB
+```
+
+如果 `page_size=1`，可以近似认为：
+
+```text
+每个 page 显存 ~= 69.67 GiB / 652296 ~= 0.0001068 GiB
+40 GiB normal KV pool ~= 40 / 0.0001068 ~= 374500 pages
+```
+
+因此可以先设置：
+
+```bash
+--num-pages 370000
+```
+
+这样 normal KV pool 约为 39.5 GiB，剩余显存可以留给模型权重、compressed pool、临时 tensor 和 CUDA/PyTorch 运行时开销。如果仍然 OOM，就继续降低到 `350000`、`320000` 或更小；如果显存余量充足，再逐步调大。
+
+注意：`--num-pages` 控制的是 miniSGLang 原本的 normal KV cache page 数，不是 compressed pool 的大小。compressed pool 仍由下面两个 ZipCache 参数控制。
 
 如果你想手动指定 compressed pool 大小，而不是按原 KV pool 比例估算，可以使用：
 
@@ -1967,6 +1994,14 @@ ZipCache v2 启动成功后，应能在服务端日志中看到：
 [ZipCacheV2] enabled: GPU prefix demotion ...
 [ZipCacheV2] compressed pool initialized: capacity=...
 ```
+
+当前 v2 不自动改变 compressed pool 的分配方式，也不强行接管 normal KV pool 的预算。推荐的显存分配方式是手动控制：
+
+```text
+总显存 ~= 模型权重 + normal_fp16_kv_pool(--num-pages) + compressed_pool + 临时运行开销
+```
+
+因此如果启动时看到 normal KV pool 已经吃掉大部分显存，例如 `K + V = 69.67 GiB`，再额外分配 compressed pool 就很容易 OOM。此时应优先降低 `--num-pages`，而不是继续增大 `--zipcache-v2-compressed-pool-ratio`。
 
 当发生 demote / restore 时，应能看到类似日志：
 
