@@ -80,13 +80,16 @@ class PrefillAdder:
         estimated_len = extend_len + req.output_len
 
         if estimated_len + self.reserved_size > self.cache_manager.available_size:
+            self.cache_manager.release_handle_resources(handle)
             return None
 
         # lock 之后，handle 对应的 prefix cache 不会被其他分配驱逐。
         self.cache_manager.lock(handle)
         if estimated_len + self.reserved_size > self.cache_manager.available_size:
             # lock 后再检查一次，防止 available_size 因锁定状态变化而不够。
-            return self.cache_manager.unlock(handle)
+            self.cache_manager.unlock(handle)
+            self.cache_manager.release_handle_resources(handle)
+            return None
 
         table_idx = self.table_manager.allocate()
         if cached_len > 0:  # NOTE: set the cached part

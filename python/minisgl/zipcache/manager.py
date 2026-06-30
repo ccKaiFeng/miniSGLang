@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 
 import torch
 from minisgl.core import Batch, Req
+from minisgl.kvcache import BaseCacheHandle
 from minisgl.utils import init_logger
 
 logger = init_logger(__name__)
@@ -128,6 +129,38 @@ class _V2CompressedEntry:
     created_time: float
     last_access_time: float
     hit_count: int = 0
+
+
+@dataclass(frozen=True)
+class _V3MaterializedHandle(BaseCacheHandle):
+    """v3 prefix 命中后返回给 scheduler 的临时 handle。
+
+    radix tree 里的 compressed node 不会被永久恢复成 normal node。v3 只为当前
+    请求分配一段 normal KV page，把 compressed pool 里的内容解压进去，然后
+    通过这个 handle 把临时 indices 写入请求的 page_table。
+    """
+
+    base_handle: Any
+    matched_indices: torch.Tensor
+    temporary_indices: torch.Tensor
+
+    def get_matched_indices(self) -> torch.Tensor:
+        return self.matched_indices
+
+
+@dataclass(frozen=True)
+class _V3OwnedHandle(BaseCacheHandle):
+    """请求 decode 期间持有临时 restored page 的 wrapper handle。"""
+
+    base_handle: Any
+    temporary_indices: torch.Tensor
+
+    @property
+    def node(self) -> Any:
+        return self.base_handle.node
+
+    def get_matched_indices(self) -> torch.Tensor:
+        return self.base_handle.get_matched_indices()
 
 
 class _SegmentAllocator:
@@ -295,6 +328,175 @@ class _V2CompressedPool:
         offset = allocator.allocate(length)
         if offset is None:
             raise RuntimeError(f"ZipCacheV2 compressed pool is full: buffer={buffer_name}")
+        allocated.append(_V2PoolSlice(buffer_name, offset, length))
+        return offset
+
+
+class _V3CompressedPool:
+    """ZipCache v3 固定大小 GPU compressed pool。
+
+    v2 为了实现简单，把 2bit/4bit 量化值都放进统一 4bit slot。v3 进一步把
+    重要 token 和非重要 token 分到独立 q4/q2 buffer：
+    - bit <= 2 的量化值使用 2bit packed storage；
+    - bit > 2 且 bit <= 4 的量化值使用 4bit packed storage。
+
+    min/step 和 token ids 仍然保存在单独 buffer 中，restore 时根据每个
+    _V2QuantizedPart 记录的 slices 和 storage_bit 还原。
+    """
+
+    def __init__(
+        self,
+        total_bytes: int,
+        device: torch.device,
+        *,
+        q4_ratio: float,
+        q2_ratio: float,
+        scale_ratio: float,
+        ids_ratio: float,
+    ):
+        total_bytes = max(total_bytes, 1024 * 1024)
+        ratios = [
+            max(q4_ratio, 0.0),
+            max(q2_ratio, 0.0),
+            max(scale_ratio, 0.0),
+            max(ids_ratio, 0.0),
+        ]
+        ratio_sum = sum(ratios)
+        if ratio_sum <= 0:
+            ratios = [0.45, 0.15, 0.25, 0.15]
+            ratio_sum = sum(ratios)
+        ratios = [r / ratio_sum for r in ratios]
+
+        q4_bytes = max(int(total_bytes * ratios[0]), 1)
+        q2_bytes = max(int(total_bytes * ratios[1]), 1)
+        scale_bytes = max(int(total_bytes * ratios[2]), 2)
+        ids_bytes = max(total_bytes - q4_bytes - q2_bytes - scale_bytes, 8)
+
+        self.q4_buffer = torch.empty(q4_bytes, dtype=torch.uint8, device=device)
+        self.q2_buffer = torch.empty(q2_bytes, dtype=torch.uint8, device=device)
+        self.scale_buffer = torch.empty(scale_bytes // 2, dtype=torch.float16, device=device)
+        self.ids_buffer = torch.empty(ids_bytes // 8, dtype=torch.long, device=device)
+
+        self.q4_allocator = _SegmentAllocator(self.q4_buffer.numel())
+        self.q2_allocator = _SegmentAllocator(self.q2_buffer.numel())
+        self.scale_allocator = _SegmentAllocator(self.scale_buffer.numel())
+        self.ids_allocator = _SegmentAllocator(self.ids_buffer.numel())
+        self.capacity_bytes = (
+            self.q4_buffer.numel() * self.q4_buffer.element_size()
+            + self.q2_buffer.numel() * self.q2_buffer.element_size()
+            + self.scale_buffer.numel() * self.scale_buffer.element_size()
+            + self.ids_buffer.numel() * self.ids_buffer.element_size()
+        )
+
+    def allocate_part(
+        self,
+        *,
+        ids: torch.Tensor,
+        q: torch.Tensor,
+        min_val: torch.Tensor,
+        step: torch.Tensor,
+        bit: int,
+    ) -> _V2QuantizedPart:
+        if bit > 4:
+            raise ValueError("ZipCacheV3 packed pool supports bit width <= 4")
+
+        allocated: List[_V2PoolSlice] = []
+        storage_bit = 2 if bit <= 2 else 4
+        q_buffer = self.q2_buffer if storage_bit == 2 else self.q4_buffer
+        q_allocator = self.q2_allocator if storage_bit == 2 else self.q4_allocator
+        q_buffer_name = "q2" if storage_bit == 2 else "q4"
+
+        ids_flat = ids.reshape(-1).to(device=self.ids_buffer.device, dtype=torch.long)
+        q_shape = tuple(q.shape)
+        q_flat = q.reshape(-1).to(device=q_buffer.device, dtype=torch.uint8)
+        logical_numel = q_flat.numel()
+        q_packed = _pack_lowbit(q_flat, storage_bit)
+        min_flat = min_val.reshape(-1).to(device=self.scale_buffer.device, dtype=torch.float16)
+        step_flat = step.reshape(-1).to(device=self.scale_buffer.device, dtype=torch.float16)
+
+        try:
+            ids_offset = self._allocate(self.ids_allocator, "ids", ids_flat.numel(), allocated)
+            q_offset = self._allocate(q_allocator, q_buffer_name, q_packed.numel(), allocated)
+            min_offset = self._allocate(self.scale_allocator, "scale", min_flat.numel(), allocated)
+            step_offset = self._allocate(self.scale_allocator, "scale", step_flat.numel(), allocated)
+
+            ids_view = self.ids_buffer[ids_offset : ids_offset + ids_flat.numel()]
+            q_view = q_buffer[q_offset : q_offset + q_packed.numel()]
+            min_view = self.scale_buffer[min_offset : min_offset + min_flat.numel()].view(
+                min_val.shape
+            )
+            step_view = self.scale_buffer[step_offset : step_offset + step_flat.numel()].view(
+                step.shape
+            )
+            ids_view.copy_(ids_flat)
+            q_view.copy_(q_packed)
+            min_view.reshape(-1).copy_(min_flat)
+            step_view.reshape(-1).copy_(step_flat)
+            return _V2QuantizedPart(
+                ids=ids_view,
+                q=q_view,
+                min=min_view,
+                step=step_view,
+                bit=bit,
+                storage_bit=storage_bit,
+                logical_numel=logical_numel,
+                q_shape=q_shape,
+                slices=tuple(allocated),
+            )
+        except Exception:
+            self.free_slices(allocated)
+            raise
+
+    def free_part(self, part: _V2QuantizedPart) -> None:
+        self.free_slices(part.slices)
+
+    def free_slices(self, slices: Tuple[_V2PoolSlice, ...] | List[_V2PoolSlice]) -> None:
+        for pool_slice in slices:
+            if pool_slice.buffer_name == "q4":
+                self.q4_allocator.free(pool_slice.offset, pool_slice.length)
+            elif pool_slice.buffer_name == "q2":
+                self.q2_allocator.free(pool_slice.offset, pool_slice.length)
+            elif pool_slice.buffer_name == "scale":
+                self.scale_allocator.free(pool_slice.offset, pool_slice.length)
+            elif pool_slice.buffer_name == "ids":
+                self.ids_allocator.free(pool_slice.offset, pool_slice.length)
+
+    def stats(self) -> Dict[str, int | float]:
+        q4_used = self.q4_allocator.used_size * self.q4_buffer.element_size()
+        q2_used = self.q2_allocator.used_size * self.q2_buffer.element_size()
+        scale_used = self.scale_allocator.used_size * self.scale_buffer.element_size()
+        ids_used = self.ids_allocator.used_size * self.ids_buffer.element_size()
+        used_bytes = q4_used + q2_used + scale_used + ids_used
+        return {
+            "compressed_pool_capacity_bytes": self.capacity_bytes,
+            "compressed_pool_used_bytes": used_bytes,
+            "compressed_pool_free_bytes": self.capacity_bytes - used_bytes,
+            "compressed_pool_utilization": used_bytes / self.capacity_bytes,
+            "compressed_pool_q_used_bytes": q4_used + q2_used,
+            "compressed_pool_q4_used_bytes": q4_used,
+            "compressed_pool_q2_used_bytes": q2_used,
+            "compressed_pool_scale_used_bytes": scale_used,
+            "compressed_pool_ids_used_bytes": ids_used,
+            "compressed_pool_q4_capacity_bytes": self.q4_buffer.numel()
+            * self.q4_buffer.element_size(),
+            "compressed_pool_q2_capacity_bytes": self.q2_buffer.numel()
+            * self.q2_buffer.element_size(),
+            "compressed_pool_scale_capacity_bytes": self.scale_buffer.numel()
+            * self.scale_buffer.element_size(),
+            "compressed_pool_ids_capacity_bytes": self.ids_buffer.numel()
+            * self.ids_buffer.element_size(),
+        }
+
+    def _allocate(
+        self,
+        allocator: _SegmentAllocator,
+        buffer_name: str,
+        length: int,
+        allocated: List[_V2PoolSlice],
+    ) -> int:
+        offset = allocator.allocate(length)
+        if offset is None:
+            raise RuntimeError(f"ZipCacheV3 compressed pool is full: buffer={buffer_name}")
         allocated.append(_V2PoolSlice(buffer_name, offset, length))
         return offset
 
@@ -724,9 +926,11 @@ class ZipCacheV2Manager:
                 original_total / storage_total if storage_total > 0 else 1.0
             )
             self._update_active_stats()
+            tag = _zipcache_version_name(self.config)
             logger.info_rank0(
-                "[ZipCacheV2] demoted: entry_id=%s node=%s tokens=%s "
+                "[%s] demoted: entry_id=%s node=%s tokens=%s "
                 "original=%s estimated_4bit=%s gpu_storage=%s",
+                tag,
                 entry_id,
                 node.uuid,
                 node.length,
@@ -741,7 +945,11 @@ class ZipCacheV2Manager:
             self._stats["num_demote_failures"] += 1
             if "compressed pool is full" in str(exc):
                 self._stats["num_demote_rejected_pool_full"] += 1
-            logger.exception("[ZipCacheV2] demote failed: node=%s", getattr(node, "uuid", None))
+            logger.exception(
+                "[%s] demote failed: node=%s",
+                _zipcache_version_name(self.config),
+                getattr(node, "uuid", None),
+            )
             return None
 
     def materialize_match(self, prefix_cache: Any, handle: Any, cache_manager: Any) -> Any:
@@ -866,8 +1074,266 @@ class ZipCacheV2Manager:
         )
 
 
+class ZipCacheV3Manager(ZipCacheV2Manager):
+    """ZipCache v3 GPU prefix compression manager.
+
+    v3 的目标是让 compressed pool 成为长期 KV archive，normal pool 只作为当前
+    请求的 fp16/bf16 工作区：
+    - demote 路径沿用 v2，把 radix node 的 normal KV 压缩到 GPU compressed pool；
+    - compressed 命中时临时解压到 normal pool，供原 attention kernel 使用；
+    - radix node 继续保持 compressed 状态，compressed entry 不因 restore 被释放；
+    - 请求结束后释放这次 restore 申请的 normal page。
+    """
+
+    def __init__(self, config: Any, kv_pool: Any, page_table: torch.Tensor):
+        self.config = config
+        self.kv_pool = kv_pool
+        self.page_table = page_table
+        self.original_kv_pool_bytes = _estimate_kv_pool_bytes(kv_pool)
+        self.pool = _V3CompressedPool(
+            total_bytes=_choose_v3_pool_bytes(config, self.original_kv_pool_bytes),
+            device=kv_pool.device,
+            q4_ratio=float(getattr(config, "zipcache_v3_q4_pool_ratio", 0.45)),
+            q2_ratio=float(getattr(config, "zipcache_v3_q2_pool_ratio", 0.15)),
+            scale_ratio=float(getattr(config, "zipcache_v3_scale_pool_ratio", 0.25)),
+            ids_ratio=float(getattr(config, "zipcache_v3_ids_pool_ratio", 0.15)),
+        )
+        self.entries: Dict[int, _V2CompressedEntry] = {}
+        self.entry_by_node_uuid: Dict[int, int] = {}
+        self._next_entry_id = 1
+        self._last_stats_log = 0.0
+        self._released_handle_ids: set[int] = set()
+        self._stats: Dict[str, int | float] = {
+            "num_demotions": 0,
+            "num_demote_failures": 0,
+            "num_compressed_entries": 0,
+            "num_compressed_hits": 0,
+            "num_restore_attempts": 0,
+            "num_restore_success": 0,
+            "num_restore_fallback": 0,
+            "num_compressed_freed": 0,
+            "num_temporary_restore_pages": 0,
+            "num_restore_pages_released": 0,
+            "num_restore_rejected_small_prefix": 0,
+            "original_estimated_bytes": 0,
+            "compressed_estimated_bytes_4bit": 0,
+            "compressed_storage_bytes": 0,
+            "active_original_estimated_bytes": 0,
+            "active_compressed_estimated_bytes_4bit": 0,
+            "active_compressed_storage_bytes": 0,
+            "last_estimated_compression_ratio": 1.0,
+            "last_storage_compression_ratio": 1.0,
+            "num_demote_rejected_pool_full": 0,
+        }
+        logger.info_rank0(
+            "[ZipCacheV3] compressed pool initialized: capacity=%s bytes, "
+            "normal_kv_pool=%s bytes",
+            self.pool.capacity_bytes,
+            self.original_kv_pool_bytes,
+        )
+
+    def enabled(self) -> bool:
+        return bool(getattr(self.config, "enable_zipcache_v3", False))
+
+    def materialize_match(self, prefix_cache: Any, handle: Any, cache_manager: Any) -> Any:
+        """把 compressed radix 命中临时恢复到 normal pool。
+
+        返回的 handle 只属于当前请求。radix tree 节点仍保持 compressed 状态，
+        后续请求仍然可以继续命中 compressed entry。
+        """
+
+        if not self.enabled() or handle.cached_len == 0:
+            return handle
+        try:
+            from minisgl.kvcache.radix_cache import RadixCacheHandle
+
+            nodes = prefix_cache.path_nodes(handle)
+            if not any(node.is_compressed for node in nodes):
+                return handle
+
+            min_restore = int(getattr(self.config, "zipcache_v3_min_restore_tokens", 0))
+            keep_compressed = bool(
+                getattr(self.config, "zipcache_v3_keep_compressed_after_restore", True)
+            )
+            materialized_len = 0
+            last_safe_node = prefix_cache.root_node
+            matched_parts: List[torch.Tensor] = []
+            temporary_parts: List[torch.Tensor] = []
+
+            for node in nodes:
+                if not node.is_compressed:
+                    matched_parts.append(node.value)
+                    materialized_len += node.length
+                    last_safe_node = node
+                    continue
+
+                if node.length < min_restore:
+                    self._stats["num_restore_rejected_small_prefix"] += 1
+                    self._stats["num_restore_fallback"] += 1
+                    logger.info_rank0(
+                        "[ZipCacheV3] restore skipped: node=%s tokens=%s min_restore=%s",
+                        node.uuid,
+                        node.length,
+                        min_restore,
+                    )
+                    self._release_temporary_parts(cache_manager, temporary_parts)
+                    return RadixCacheHandle(materialized_len, last_safe_node)
+
+                entry_id = node.compressed_id or self.entry_by_node_uuid.get(node.uuid)
+                entry = self.entries.get(entry_id) if entry_id is not None else None
+                if entry is None:
+                    self._stats["num_restore_fallback"] += 1
+                    logger.warning_rank0(
+                        "[ZipCacheV3] restore fallback: missing entry node=%s", node.uuid
+                    )
+                    self._release_temporary_parts(cache_manager, temporary_parts)
+                    return RadixCacheHandle(materialized_len, last_safe_node)
+
+                self._stats["num_compressed_hits"] += 1
+                self._stats["num_restore_attempts"] += 1
+                new_indices = cache_manager.allocate_token_indices(node.length)
+                try:
+                    self._restore_entry_to_indices(entry, new_indices)
+                except Exception:
+                    cache_manager._free(new_indices)
+                    raise
+
+                matched_parts.append(new_indices)
+                if keep_compressed:
+                    temporary_parts.append(new_indices)
+                else:
+                    prefix_cache.mark_node_restored(node, new_indices)
+                    self._free_entry(entry.entry_id)
+                materialized_len += node.length
+                last_safe_node = node
+                self._stats["num_restore_success"] += 1
+                restored_pages = int(
+                    (len(new_indices) + cache_manager.page_size - 1)
+                    // cache_manager.page_size
+                )
+                if keep_compressed:
+                    self._stats["num_temporary_restore_pages"] += restored_pages
+                if keep_compressed:
+                    logger.info_rank0(
+                        "[ZipCacheV3] restored temporary: entry_id=%s node=%s tokens=%s",
+                        entry.entry_id,
+                        node.uuid,
+                        node.length,
+                    )
+                else:
+                    logger.info_rank0(
+                        "[ZipCacheV3] restored permanent: entry_id=%s node=%s tokens=%s",
+                        entry.entry_id,
+                        node.uuid,
+                        node.length,
+                    )
+
+            if not matched_parts:
+                return RadixCacheHandle(0, prefix_cache.root_node)
+            if not temporary_parts:
+                return handle
+            return _V3MaterializedHandle(
+                cached_len=materialized_len,
+                base_handle=handle,
+                matched_indices=torch.cat(matched_parts),
+                temporary_indices=(
+                    torch.cat(temporary_parts)
+                    if temporary_parts
+                    else torch.empty(0, dtype=torch.int32, device=cache_manager.device)
+                ),
+            )
+        except Exception:
+            if "temporary_parts" in locals():
+                self._release_temporary_parts(cache_manager, temporary_parts)
+            self._stats["num_restore_fallback"] += 1
+            logger.exception("[ZipCacheV3] restore failed; fallback to recompute")
+            try:
+                from minisgl.kvcache.radix_cache import RadixCacheHandle
+
+                return RadixCacheHandle(0, prefix_cache.root_node)
+            except Exception:
+                return handle
+
+    def owns_handle(self, handle: Any) -> bool:
+        return isinstance(handle, (_V3MaterializedHandle, _V3OwnedHandle))
+
+    def lock_handle(self, prefix_cache: Any, handle: Any, *, unlock: bool = False) -> bool:
+        if isinstance(handle, (_V3MaterializedHandle, _V3OwnedHandle)):
+            prefix_cache.lock_handle(handle.base_handle, unlock=unlock)
+            return True
+        return False
+
+    def carry_handle_resources(self, old_handle: Any, new_handle: Any) -> Any:
+        """prefill 后把临时 restored page 从 match handle 转交给 decode handle。"""
+
+        if isinstance(old_handle, (_V3MaterializedHandle, _V3OwnedHandle)):
+            return _V3OwnedHandle(
+                cached_len=new_handle.cached_len,
+                base_handle=new_handle,
+                temporary_indices=old_handle.temporary_indices,
+            )
+        return new_handle
+
+    def release_handle_resources(self, handle: Any, cache_manager: Any) -> None:
+        if not isinstance(handle, (_V3MaterializedHandle, _V3OwnedHandle)):
+            return
+        handle_id = id(handle)
+        if handle_id in self._released_handle_ids:
+            return
+        self._released_handle_ids.add(handle_id)
+        if handle.temporary_indices.numel() == 0:
+            return
+        cache_manager._free(handle.temporary_indices)
+        released_pages = int(
+            (len(handle.temporary_indices) + cache_manager.page_size - 1)
+            // cache_manager.page_size
+        )
+        self._stats["num_restore_pages_released"] += released_pages
+        logger.debug_rank0(
+            "[ZipCacheV3] released temporary restore pages: tokens=%s pages=%s",
+            len(handle.temporary_indices),
+            released_pages,
+        )
+
+    def log_stats(self) -> None:
+        if self.enabled():
+            logger.info_rank0("[ZipCacheV3] stats: %s", self.stats())
+
+    def stats(self) -> Dict[str, int | float]:
+        stats = super().stats()
+        stats["normal_pool_capacity_bytes"] = self.original_kv_pool_bytes
+        stats["estimated_effective_kv_capacity_bytes"] = (
+            self.original_kv_pool_bytes
+            + self.pool.capacity_bytes
+            * float(stats.get("active_storage_compression_ratio", 1.0))
+        )
+        stats["estimated_capacity_gain_vs_normal_pool"] = (
+            stats["estimated_effective_kv_capacity_bytes"] / self.original_kv_pool_bytes
+            if self.original_kv_pool_bytes > 0
+            else 1.0
+        )
+        return stats
+
+    def _release_temporary_parts(self, cache_manager: Any, parts: List[torch.Tensor]) -> None:
+        if not parts:
+            return
+        indices = torch.cat(parts)
+        cache_manager._free(indices)
+        self._stats["num_restore_pages_released"] += int(
+            (len(indices) + cache_manager.page_size - 1) // cache_manager.page_size
+        )
+
+
 def _flatten_layer_cache(cache: torch.Tensor) -> torch.Tensor:
     return cache.view(-1, cache.shape[-2], cache.shape[-1])
+
+
+def _zipcache_version_name(config: Any) -> str:
+    if bool(getattr(config, "enable_zipcache_v3", False)):
+        return "ZipCacheV3"
+    if bool(getattr(config, "enable_zipcache_v2", False)):
+        return "ZipCacheV2"
+    return "ZipCache"
 
 
 def _estimate_kv_pool_bytes(kv_pool: Any) -> int:
@@ -882,6 +1348,15 @@ def _choose_v2_pool_bytes(config: Any, original_kv_pool_bytes: int) -> int:
     ratio = float(getattr(config, "zipcache_v2_compressed_pool_ratio", 0.35))
     ratio = max(ratio, 0.01)
     return int(original_kv_pool_bytes * ratio)
+
+
+def _choose_v3_pool_bytes(config: Any, normal_kv_pool_bytes: int) -> int:
+    pool_mb = int(getattr(config, "zipcache_v3_compressed_pool_mb", 0))
+    if pool_mb > 0:
+        return pool_mb * 1024 * 1024
+    ratio = float(getattr(config, "zipcache_v3_compressed_pool_ratio", 1.0))
+    ratio = max(ratio, 0.01)
+    return int(normal_kv_pool_bytes * ratio)
 
 
 def _make_probe_ids(length: int, device: torch.device) -> torch.Tensor:
@@ -1012,11 +1487,17 @@ def _quantize_mixed_gpu(
     *,
     important_bit: int,
     unimportant_bit: int,
-    pool: _V2CompressedPool | None = None,
+    pool: _V2CompressedPool | _V3CompressedPool | None = None,
 ) -> _V2CompressedTensor:
     important_ids, unimportant_ids = _split_ids(x.shape[0], unimportant_ids, x.device)
-    important = _quantize_part_gpu(x, important_ids, important_bit, pool)
-    unimportant = _quantize_part_gpu(x, unimportant_ids, unimportant_bit, pool)
+    important = None
+    try:
+        important = _quantize_part_gpu(x, important_ids, important_bit, pool)
+        unimportant = _quantize_part_gpu(x, unimportant_ids, unimportant_bit, pool)
+    except Exception:
+        if pool is not None and important is not None:
+            pool.free_part(important)
+        raise
     return _V2CompressedTensor(
         shape=tuple(x.shape),  # type: ignore[arg-type]
         dtype=x.dtype,
@@ -1026,10 +1507,13 @@ def _quantize_mixed_gpu(
 
 
 def _quantize_part_gpu(
-    x: torch.Tensor, ids: torch.Tensor, bit: int, pool: _V2CompressedPool | None = None
+    x: torch.Tensor,
+    ids: torch.Tensor,
+    bit: int,
+    pool: _V2CompressedPool | _V3CompressedPool | None = None,
 ) -> _V2QuantizedPart:
     if pool is not None and bit > 4:
-        raise ValueError("ZipCacheV2 packed pool supports bit width <= 4")
+        raise ValueError("ZipCache packed pool supports bit width <= 4")
     ids = ids.to(device=x.device, dtype=torch.long)
     if ids.numel() == 0:
         empty_q = torch.empty(0, dtype=torch.uint8, device=x.device)
@@ -1077,28 +1561,58 @@ def _dequantize_part_gpu_into(
     if part.ids.numel() == 0:
         return
     q = (
-        _unpack_4bit(part.q, part.logical_numel, part.q_shape)
-        if part.storage_bit == 4
+        _unpack_lowbit(part.q, part.storage_bit, part.logical_numel, part.q_shape)
+        if part.storage_bit in (2, 4)
         else part.q
     )
     out[part.ids] = (q.float() * part.step.float() + part.min.float()).to(dtype)
 
 
 def _pack_4bit(q: torch.Tensor) -> torch.Tensor:
-    q = q.reshape(-1).to(torch.uint8).clamp_(0, 15)
-    if q.numel() == 0:
-        return q
-    if q.numel() % 2 != 0:
-        q = torch.cat([q, torch.zeros(1, dtype=torch.uint8, device=q.device)])
-    low = q[0::2] & 0x0F
-    high = (q[1::2] & 0x0F) << 4
-    return low | high
+    return _pack_lowbit(q, 4)
 
 
 def _unpack_4bit(packed: torch.Tensor, logical_numel: int, shape: Tuple[int, ...]) -> torch.Tensor:
+    return _unpack_lowbit(packed, 4, logical_numel, shape)
+
+
+def _pack_lowbit(q: torch.Tensor, storage_bit: int) -> torch.Tensor:
+    """把 uint8 量化值按 2bit 或 4bit 打包到 uint8 buffer。"""
+
+    if storage_bit not in (2, 4):
+        raise ValueError(f"Unsupported packed bit width: {storage_bit}")
+    mask = (1 << storage_bit) - 1
+    values_per_byte = 8 // storage_bit
+    q = q.reshape(-1).to(torch.uint8).clamp_(0, mask)
+    if q.numel() == 0:
+        return q
+    pad = (-q.numel()) % values_per_byte
+    if pad:
+        q = torch.cat([q, torch.zeros(pad, dtype=torch.uint8, device=q.device)])
+    chunks = q.view(-1, values_per_byte).to(torch.int16)
+    shifts = (
+        torch.arange(values_per_byte, device=q.device, dtype=torch.int16) * storage_bit
+    )
+    return ((chunks << shifts).sum(dim=1) & 0xFF).to(torch.uint8)
+
+
+def _unpack_lowbit(
+    packed: torch.Tensor,
+    storage_bit: int,
+    logical_numel: int,
+    shape: Tuple[int, ...],
+) -> torch.Tensor:
+    """把 2bit/4bit packed uint8 buffer 解包成原量化值 tensor。"""
+
+    if storage_bit not in (2, 4):
+        raise ValueError(f"Unsupported packed bit width: {storage_bit}")
     if logical_numel == 0:
         return torch.empty(shape, dtype=torch.uint8, device=packed.device)
-    out = torch.empty(packed.numel() * 2, dtype=torch.uint8, device=packed.device)
-    out[0::2] = packed & 0x0F
-    out[1::2] = (packed >> 4) & 0x0F
+    values_per_byte = 8 // storage_bit
+    mask = (1 << storage_bit) - 1
+    shifts = (
+        torch.arange(values_per_byte, device=packed.device, dtype=torch.int16) * storage_bit
+    )
+    packed_i16 = packed.to(torch.int16).unsqueeze(1)
+    out = ((packed_i16 >> shifts) & mask).to(torch.uint8).reshape(-1)
     return out[:logical_numel].view(shape)

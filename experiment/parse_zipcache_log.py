@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-STATS_RE = re.compile(r"\[(ZipCacheV[12])\] stats:\s*(\{.*\})")
+STATS_RE = re.compile(r"\[(ZipCacheV[123])\] stats:\s*(\{.*\})")
 
 
 def parse_stats(path: Path) -> List[Dict[str, Any]]:
@@ -51,14 +51,19 @@ def _first_int(row: Dict[str, Any], keys: List[str], default: int = 0) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Parse [ZipCacheV1]/[ZipCacheV2] stats from server log.")
+    parser = argparse.ArgumentParser(
+        description="Parse [ZipCacheV1]/[ZipCacheV2]/[ZipCacheV3] stats from server log."
+    )
     parser.add_argument("--log", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
 
     rows = parse_stats(args.log)
     if not rows:
-        summary = {"num_stats": 0, "message": "No [ZipCacheV1]/[ZipCacheV2] stats found."}
+        summary = {
+            "num_stats": 0,
+            "message": "No [ZipCacheV1]/[ZipCacheV2]/[ZipCacheV3] stats found.",
+        }
     else:
         last = rows[-1]
         versions = sorted({str(r.get("_zipcache_version", "unknown")) for r in rows})

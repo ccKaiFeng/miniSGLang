@@ -89,12 +89,46 @@ class CacheManager:
     def lock(self, handle: BaseCacheHandle) -> None:
         """锁定一个 cache handle，防止其对应缓存被驱逐。"""
 
+        if (
+            self.zipcache_manager is not None
+            and hasattr(self.zipcache_manager, "lock_handle")
+            and self.zipcache_manager.lock_handle(self.prefix_cache, handle, unlock=False)
+        ):
+            return
         self.prefix_cache.lock_handle(handle, unlock=False)
 
     def unlock(self, handle: BaseCacheHandle) -> None:
         """解锁一个 cache handle，允许其在需要时被驱逐。"""
 
+        if (
+            self.zipcache_manager is not None
+            and hasattr(self.zipcache_manager, "lock_handle")
+            and self.zipcache_manager.lock_handle(self.prefix_cache, handle, unlock=True)
+        ):
+            return
         self.prefix_cache.lock_handle(handle, unlock=True)
+
+    def release_handle_resources(self, handle: BaseCacheHandle) -> None:
+        """释放 v3 这类 handle 附带的临时 normal page。"""
+
+        if self.zipcache_manager is not None and hasattr(
+            self.zipcache_manager, "release_handle_resources"
+        ):
+            self.zipcache_manager.release_handle_resources(handle, self)
+
+    def carry_handle_resources(
+        self, old_handle: BaseCacheHandle, new_handle: BaseCacheHandle
+    ) -> BaseCacheHandle:
+        """把旧 handle 的临时资源转交给新 handle。
+
+        普通 cache 没有附加资源，直接返回 new_handle。
+        """
+
+        if self.zipcache_manager is not None and hasattr(
+            self.zipcache_manager, "carry_handle_resources"
+        ):
+            return self.zipcache_manager.carry_handle_resources(old_handle, new_handle)
+        return new_handle
 
     def allocate_paged(self, reqs: List[Req]) -> None:
         """为一批请求分配缺失的 KV cache page。
@@ -154,12 +188,14 @@ class CacheManager:
         if finished:  # this tail part should be freed
             # 请求结束，不能插入 prefix cache 的尾部也释放。
             self._free(page_indices[new_handle.cached_len :])
-            if (
-                self.zipcache_manager is not None
-                and getattr(self.zipcache_manager.config, "zipcache_v2_demote_on_finish", False)
-                and hasattr(self.zipcache_manager, "demote_node")
-                and hasattr(new_handle, "node")
-            ):
+            should_demote = False
+            if self.zipcache_manager is not None and hasattr(self.zipcache_manager, "demote_node"):
+                config = self.zipcache_manager.config
+                should_demote = bool(
+                    getattr(config, "zipcache_v2_demote_on_finish", False)
+                    or getattr(config, "zipcache_v3_demote_on_finish", False)
+                )
+            if should_demote and hasattr(new_handle, "node"):
                 # v2 初版只 demote ref_count == 0 的 finished prefix 叶子节点。
                 # 成功后再释放原 normal fp16 page，保证压缩失败不影响原逻辑。
                 node = new_handle.node
@@ -170,10 +206,11 @@ class CacheManager:
                         self.zipcache_manager.entry_by_node_uuid[node.uuid],
                     )
                     self._free(demoted)
+            self.release_handle_resources(old_handle)
         else:  # keep the tail part, update the handle
             # 请求还要继续 decode，更新 handle 并锁定，防止被驱逐。
-            req.cache_handle = new_handle
-            self.lock(new_handle)
+            req.cache_handle = self.carry_handle_resources(old_handle, new_handle)
+            self.lock(req.cache_handle)
 
     def check_integrity(self) -> None:
         """检查 free page + cache page 数是否等于总 page 数。"""

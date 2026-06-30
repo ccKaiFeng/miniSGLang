@@ -63,6 +63,7 @@ class EngineConfig:
     # ZipCache v1 experimental runtime compression. Disabled by default.
     enable_zipcache_v1: bool = False
     enable_zipcache_v2: bool = False
+    enable_zipcache_v3: bool = False
     zipcache_unimportant_ratio: float = 0.4
     zipcache_k_important_bit: int = 4
     zipcache_k_unimportant_bit: int = 2
@@ -74,6 +75,16 @@ class EngineConfig:
     zipcache_v2_demote_on_finish: bool = True
     zipcache_v2_compressed_pool_mb: int = 0
     zipcache_v2_compressed_pool_ratio: float = 0.35
+    zipcache_v3_demote_on_finish: bool = True
+    zipcache_v3_normal_pool_pages: int = 0
+    zipcache_v3_compressed_pool_mb: int = 0
+    zipcache_v3_compressed_pool_ratio: float = 1.0
+    zipcache_v3_q4_pool_ratio: float = 0.45
+    zipcache_v3_q2_pool_ratio: float = 0.15
+    zipcache_v3_scale_pool_ratio: float = 0.25
+    zipcache_v3_ids_pool_ratio: float = 0.15
+    zipcache_v3_keep_compressed_after_restore: bool = True
+    zipcache_v3_min_restore_tokens: int = 0
 
     @cached_property
     def hf_config(self):

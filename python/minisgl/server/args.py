@@ -295,6 +295,12 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         help="Enable experimental ZipCache v2 GPU prefix KV compression and restore.",
     )
     parser.add_argument(
+        "--enable-zipcache-v3",
+        action="store_true",
+        default=ServerArgs.enable_zipcache_v3,
+        help="Enable experimental ZipCache v3 GPU compressed prefix archive.",
+    )
+    parser.add_argument(
         "--zipcache-unimportant-ratio",
         type=float,
         default=ServerArgs.zipcache_unimportant_ratio,
@@ -354,6 +360,66 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         default=ServerArgs.zipcache_v2_compressed_pool_ratio,
         help="Compressed pool bytes as a ratio of the original KV pool when MB is 0.",
     )
+    parser.add_argument(
+        "--zipcache-v3-normal-pool-pages",
+        type=int,
+        default=ServerArgs.zipcache_v3_normal_pool_pages,
+        help="Normal fp16/bf16 KV pool pages for ZipCache v3. 0 keeps the normal policy.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-demote-on-finish",
+        action=argparse.BooleanOptionalAction,
+        default=ServerArgs.zipcache_v3_demote_on_finish,
+        help="Demote finished radix cache nodes into the ZipCache v3 compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-compressed-pool-mb",
+        type=int,
+        default=ServerArgs.zipcache_v3_compressed_pool_mb,
+        help="Fixed GPU compressed pool size for ZipCache v3. 0 derives from ratio.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-compressed-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_compressed_pool_ratio,
+        help="ZipCache v3 compressed pool bytes as a ratio of the normal KV pool when MB is 0.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-q4-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_q4_pool_ratio,
+        help="ZipCache v3 q4 buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-q2-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_q2_pool_ratio,
+        help="ZipCache v3 q2 buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-scale-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_scale_pool_ratio,
+        help="ZipCache v3 scale/min buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-ids-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_ids_pool_ratio,
+        help="ZipCache v3 token-id buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-keep-compressed-after-restore",
+        action=argparse.BooleanOptionalAction,
+        default=ServerArgs.zipcache_v3_keep_compressed_after_restore,
+        help="Keep compressed entries after temporary restore in ZipCache v3.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-min-restore-tokens",
+        type=int,
+        default=ServerArgs.zipcache_v3_min_restore_tokens,
+        help="Only restore compressed radix nodes with at least this many tokens.",
+    )
 
     # shell 模式：不启动 HTTP 服务，而是在当前终端里交互聊天。
     parser.add_argument(
@@ -375,13 +441,20 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         kwargs["max_running_req"] = 1
         kwargs["silent_output"] = True
 
-    if kwargs["enable_zipcache_v1"] and kwargs["enable_zipcache_v2"]:
-        parser.error("--enable-zipcache-v1 and --enable-zipcache-v2 cannot be enabled together.")
+    enabled_zipcache_count = sum(
+        int(kwargs[name])
+        for name in ("enable_zipcache_v1", "enable_zipcache_v2", "enable_zipcache_v3")
+    )
+    if enabled_zipcache_count > 1:
+        parser.error(
+            "--enable-zipcache-v1, --enable-zipcache-v2 and --enable-zipcache-v3 "
+            "are mutually exclusive."
+        )
 
-    if kwargs["enable_zipcache_v1"] or kwargs["enable_zipcache_v2"]:
+    if kwargs["enable_zipcache_v1"] or kwargs["enable_zipcache_v2"] or kwargs["enable_zipcache_v3"]:
         # ZipCache v1 在 attention 前后执行 Python/CPU 压缩恢复逻辑，不适合被
-        # CUDA Graph capture 固化；v2 会动态 materialize prefix page。先关闭 graph，
-        # 保证实验语义清晰。
+        # CUDA Graph capture 固化；v2/v3 会动态 materialize prefix page。
+        # 先关闭 graph，保证实验语义清晰。
         kwargs["cuda_graph_max_bs"] = 0
 
     # 展开用户目录路径，例如 ~/models/qwen。
