@@ -22,8 +22,12 @@ experiment/
 ├── parse_zipcache_log.py
 ├── data/
 │   ├── shared_prefix.jsonl
+│   ├── realistic_long_context.jsonl
+│   ├── zipcache_restore_probe.jsonl
+│   ├── zipcache_restore_pressure.jsonl
 │   ├── mixed_length.jsonl
-│   └── correctness.jsonl
+│   ├── correctness.jsonl
+│   └── gsm8k_correctness.jsonl
 └── results/
 ```
 
@@ -32,10 +36,15 @@ experiment/
 - `run_all_experiments.py`：一键运行多组实验，把结果统一保存到 `experiment/logs/<时间>_<模式>/`。
 - `bench_openai_stream.py`：对 OpenAI 兼容 `/v1/chat/completions` 发流式请求，统计 TTFT、总延迟、吞吐和显存。
 - `compare_results.py`：对比 main 和 ZipCache 两份 benchmark 结果。
-- `parse_zipcache_log.py`：从 ZipCache 分支服务日志中提取 `[ZipCacheV1] stats`，汇总压缩率。
+- `parse_zipcache_log.py`：从 ZipCache 分支服务日志中提取 `[ZipCacheV1] stats` 或 `[ZipCacheV2] stats`，汇总压缩率。
 - `data/shared_prefix.jsonl`：共享长前缀 workload，用于测试 prefix cache 和 ZipCache 的长上下文表现。
+- `data/realistic_long_context.jsonl`：真实长上下文压力 workload，包含 12 条约 3000 字符的 prompt，默认并发 8、repeat 3、输出 512 token，用于压高 KV cache 显存占用。
+- `data/zipcache_restore_probe.jsonl`：ZipCache v2 强命中 workload，顺序重复同一个长 prompt，用于触发 compressed hit 和 restore。
+- `data/zipcache_restore_pressure.jsonl`：ZipCache v2 restore 压力 workload，包含多个约 4000 字符的共享超长前缀请求，默认顺序重复运行，用于增加 compressed restore 触发概率。
 - `data/mixed_length.jsonl`：混合长度 workload，用于模拟普通在线服务。
 - `data/correctness.jsonl`：小规模确定性问题，用于初步检查输出是否明显错误。
+- `data/gsm8k_correctness.jsonl`：从 `gsm8k_sample.txt` 生成的数学题正确性数据集，包含标准数字答案。
+- `evaluate_correctness.py`：从 benchmark 输出中抽取最终数字答案，与数据集中的 `answer` 字段比对，计算 accuracy。
 
 ## 2. 对比指标
 
@@ -170,12 +179,25 @@ manifest.json
 shared_prefix.jsonl
 shared_prefix_summary.json
 shared_prefix.log
+realistic_long_context.jsonl
+realistic_long_context_summary.json
+realistic_long_context.log
+zipcache_restore_probe.jsonl
+zipcache_restore_probe_summary.json
+zipcache_restore_probe.log
+zipcache_restore_pressure.jsonl
+zipcache_restore_pressure_summary.json
+zipcache_restore_pressure.log
 mixed_length.jsonl
 mixed_length_summary.json
 mixed_length.log
 correctness.jsonl
 correctness_summary.json
 correctness.log
+gsm8k_correctness.jsonl
+gsm8k_correctness_summary.json
+gsm8k_correctness_eval.json
+gsm8k_correctness.log
 all_results_summary.json
 report.md
 ```
@@ -269,7 +291,77 @@ python experiment/compare_results.py \
   --candidate experiment/results/zipcache_shared_prefix.jsonl
 ```
 
-### 5.2 mixed-length 性能测试
+### 5.2 真实长上下文压力测试
+
+这组测试用于观察更真实的 KV cache 压力。默认一键脚本中配置为：
+
+```text
+dataset: experiment/data/realistic_long_context.jsonl
+rows: 12
+concurrency: 8
+repeat: 3
+max_tokens: 512
+```
+
+单独运行：
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/realistic_long_context.jsonl \
+  --output experiment/results/zipcache_realistic_long_context.jsonl \
+  --summary experiment/results/zipcache_realistic_long_context_summary.json \
+  --concurrency 8 \
+  --repeat 3 \
+  --max-tokens 512 \
+  --gpu-sample-interval 0.5 \
+  --timeout 1200
+```
+
+这组测试重点看 `gpu_memory_used_mb_max`、TTFT、TPOT、E2E 和 ZipCache v2 stats 中的 `compressed_pool_used_bytes`、`active_storage_compression_ratio`。
+
+### 5.3 ZipCache v2 restore 强命中测试
+
+这组测试不是为了测最高吞吐，而是为了验证 ZipCache v2 的 compressed hit / restore 路径。它使用一个很长的固定 prompt，并用 `--concurrency 1 --repeat 8` 顺序重复发送。理想情况下，第一次请求结束后触发 demote，后续相同 prompt 再进入时命中 compressed radix entry，并触发 restore。
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/zipcache_restore_probe.jsonl \
+  --output experiment/results/zipcache_restore_probe.jsonl \
+  --summary experiment/results/zipcache_restore_probe_summary.json \
+  --concurrency 1 \
+  --repeat 8 \
+  --max-tokens 256 \
+  --gpu-sample-interval 0.5
+```
+
+更强的 restore 压力集：
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/zipcache_restore_pressure.jsonl \
+  --output experiment/results/zipcache_restore_pressure.jsonl \
+  --summary experiment/results/zipcache_restore_pressure_summary.json \
+  --concurrency 1 \
+  --repeat 6 \
+  --max-tokens 384 \
+  --gpu-sample-interval 0.5 \
+  --timeout 1200
+```
+
+跑完后重点检查服务端日志：
+
+```bash
+grep "\[ZipCacheV2\] demoted" zipcache_v2_server.log
+grep "\[ZipCacheV2\] restored" zipcache_v2_server.log
+grep "\[ZipCacheV2\] stats" zipcache_v2_server.log
+```
+
+如果 `num_demotions > 0` 但 `num_compressed_hits = 0`，说明压缩保存成功，但后续请求没有命中 compressed prefix。此时要优先检查请求是否真的完全相同、是否启用了 `--cache-type radix`、以及服务端是否在请求结束后执行 demote。
+
+### 5.4 mixed-length 性能测试
 
 把 dataset 换成：
 
@@ -279,7 +371,7 @@ experiment/data/mixed_length.jsonl
 
 其他命令相同。
 
-### 5.3 正确性冒烟测试
+### 5.5 正确性冒烟测试
 
 建议低并发、greedy、较短输出：
 
@@ -307,6 +399,57 @@ python experiment/compare_results.py \
   --candidate experiment/results/zipcache_correctness.jsonl \
   --show-text
 ```
+
+### 5.6 GSM8K 数学题自动正确率测试
+
+`experiment/data/gsm8k_correctness.jsonl` 来自 `ZipCache/ZipCache/asset/gsm8k_sample.txt`。每条数据包含：
+
+```json
+{
+  "id": "gsm8k_001",
+  "prompt": "...",
+  "answer": "6",
+  "max_tokens": 256
+}
+```
+
+一键脚本会自动运行这组测试，并调用 `evaluate_correctness.py` 生成：
+
+```text
+gsm8k_correctness_eval.json
+```
+
+单独运行：
+
+```bash
+python experiment/bench_openai_stream.py \
+  --base-url http://127.0.0.1:30001 \
+  --dataset experiment/data/gsm8k_correctness.jsonl \
+  --output experiment/results/zipcache_gsm8k_correctness.jsonl \
+  --summary experiment/results/zipcache_gsm8k_correctness_summary.json \
+  --concurrency 1 \
+  --repeat 1 \
+  --max-tokens 256 \
+  --gpu-sample-interval 0.5
+```
+
+自动判分：
+
+```bash
+python experiment/evaluate_correctness.py \
+  --dataset experiment/data/gsm8k_correctness.jsonl \
+  --results experiment/results/zipcache_gsm8k_correctness.jsonl \
+  --output experiment/results/zipcache_gsm8k_correctness_eval.json
+```
+
+判分逻辑：
+
+- 优先匹配模型输出中的 `The answer is <number>`；
+- 如果没有该格式，则取输出文本中最后一个数字；
+- 将抽取结果与数据集 `answer` 字段精确比较；
+- 输出 `num_judged`、`num_correct` 和 `accuracy`。
+
+这个方法适合数学题和固定数字答案，不适合开放问答。开放问答仍需要人工检查或 judge model。
 
 ## 6. 实验记录建议
 

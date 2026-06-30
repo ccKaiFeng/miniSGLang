@@ -17,15 +17,39 @@ EXPERIMENTS = [
         "dataset": "data/shared_prefix.jsonl",
         "concurrency": 4,
         "repeat": 2,
-        "max_tokens": 128,
+        "max_tokens": 256,
         "description": "共享长前缀测试，主要观察长上下文、prefix cache 和 ZipCache 压缩开销。",
+    },
+    {
+        "name": "realistic_long_context",
+        "dataset": "data/realistic_long_context.jsonl",
+        "concurrency": 8,
+        "repeat": 3,
+        "max_tokens": 512,
+        "description": "真实长上下文压力测试：较多长 prompt、高并发、较长输出，用于观察 KV cache 显存压力和端到端性能。",
+    },
+    {
+        "name": "zipcache_restore_probe",
+        "dataset": "data/zipcache_restore_probe.jsonl",
+        "concurrency": 1,
+        "repeat": 8,
+        "max_tokens": 256,
+        "description": "ZipCache v2 强命中测试：顺序重复同一个长 prompt，专门观察 compressed hit 和 restore 是否触发。",
+    },
+    {
+        "name": "zipcache_restore_pressure",
+        "dataset": "data/zipcache_restore_pressure.jsonl",
+        "concurrency": 1,
+        "repeat": 6,
+        "max_tokens": 384,
+        "description": "ZipCache v2 restore 压力测试：多个共享超长前缀请求顺序重复，增加 compressed hit/restore 触发概率。",
     },
     {
         "name": "mixed_length",
         "dataset": "data/mixed_length.jsonl",
         "concurrency": 4,
         "repeat": 2,
-        "max_tokens": None,
+        "max_tokens": 256,
         "description": "混合长度测试，模拟普通在线服务负载。",
     },
     {
@@ -35,6 +59,15 @@ EXPERIMENTS = [
         "repeat": 1,
         "max_tokens": 96,
         "description": "正确性冒烟测试，低并发 greedy 输出，便于人工对比 main/ZipCache 输出。",
+    },
+    {
+        "name": "gsm8k_correctness",
+        "dataset": "data/gsm8k_correctness.jsonl",
+        "concurrency": 1,
+        "repeat": 1,
+        "max_tokens": 256,
+        "description": "GSM8K 数学题正确性测试，使用标准数字答案自动计算 accuracy。",
+        "evaluate": "gsm8k",
     },
 ]
 
@@ -172,6 +205,30 @@ def write_markdown_report(
         lines.append(f"- `{row['name']}` results: `{row['result_file']}`")
         lines.append(f"- `{row['name']}` summary: `{row['summary_file']}`")
         lines.append(f"- `{row['name']}` log: `{row['log_file']}`")
+        if row.get("eval_file") is not None:
+            lines.append(f"- `{row['name']}` correctness eval: `{row['eval_file']}`")
+
+    eval_rows = [row for row in results if row.get("eval_summary") is not None]
+    if eval_rows:
+        lines.extend(
+            [
+                "",
+                "## Correctness Evaluation",
+                "",
+                "| experiment | judged | correct | accuracy |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        for row in eval_rows:
+            ev = row["eval_summary"]
+            lines.append(
+                "| {name} | {judged} | {correct} | {acc:.4g} |".format(
+                    name=row["name"],
+                    judged=int(ev.get("num_judged", 0)),
+                    correct=int(ev.get("num_correct", 0)),
+                    acc=float(ev.get("accuracy", 0.0)),
+                )
+            )
 
     if zipcache_stats is not None:
         lines.extend(
@@ -276,17 +333,33 @@ def main() -> None:
         if exit_code != 0:
             raise SystemExit(f"Experiment {name} failed, see {log_file}")
         summary = load_json(summary_file)
-        all_results.append(
-            {
-                "name": name,
-                "description": exp["description"],
-                "result_file": str(result_file),
-                "summary_file": str(summary_file),
-                "log_file": str(log_file),
-                "summary": summary,
-                "compact_summary": summarize_for_report(summary),
-            }
-        )
+        row_result = {
+            "name": name,
+            "description": exp["description"],
+            "result_file": str(result_file),
+            "summary_file": str(summary_file),
+            "log_file": str(log_file),
+            "summary": summary,
+            "compact_summary": summarize_for_report(summary),
+        }
+        if exp.get("evaluate") == "gsm8k":
+            eval_file = run_dir / f"{name}_eval.json"
+            eval_cmd = [
+                sys.executable,
+                str(exp_root / "evaluate_correctness.py"),
+                "--dataset",
+                str(exp_root / exp["dataset"]),
+                "--results",
+                str(result_file),
+                "--output",
+                str(eval_file),
+            ]
+            print(f"\n===== Evaluating {name} correctness =====")
+            eval_exit = run_command(eval_cmd, run_dir / f"{name}_eval.log")
+            if eval_exit == 0 and eval_file.exists():
+                row_result["eval_file"] = str(eval_file)
+                row_result["eval_summary"] = load_json(eval_file)
+        all_results.append(row_result)
 
     zipcache_stats = None
     if args.server_log is not None:
