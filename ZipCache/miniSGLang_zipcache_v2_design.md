@@ -1867,3 +1867,341 @@ restore 失败后频繁 recompute
 在显存有限时，用低 bit GPU 压缩缓存保留更多有复用价值的历史 KV，
 从而提升长上下文和多并发场景下的有效缓存容量。
 ```
+
+## 18. 如何启动 v2 并与 main 版本对比测试
+
+本节说明如何在云服务器上启动原始 main 版本和 ZipCache v2 版本，并使用 `experiment/` 目录下的一键脚本做对比。
+
+### 18.1 测试前准备
+
+建议 main 和 ZipCache v2 使用完全相同的条件：
+
+```text
+同一个模型路径
+同一个 GPU
+同一个 dtype
+同一个 cache-type
+同一个 max-running-requests
+同一个 max-prefill-length / max-extend-length
+同一个 page-size
+同一份 experiment/data 数据集
+同一套 benchmark 参数
+```
+
+如果你只有一个工作目录，可以按顺序测试：
+
+```bash
+git switch main
+# 启动 main 服务并跑测试
+
+git switch ZipCache
+# 启动 ZipCache v2 服务并跑测试
+```
+
+如果你有两个工作目录，也可以分别 clone 两份仓库，一个停在 `main` 分支，一个停在 `ZipCache` 分支，同时启动两个服务：
+
+```text
+main:        http://127.0.0.1:30000
+ZipCache v2: http://127.0.0.1:30001
+```
+
+### 18.2 启动 main 版本
+
+在 main 分支目录中启动服务：
+
+```bash
+git switch main
+
+PYTHONPATH=python python -m minisgl \
+  --model-path /path/to/model \
+  --host 0.0.0.0 \
+  --port 30000 \
+  --cache-type radix \
+  --max-running-requests 16 \
+  --max-prefill-length 4096 \
+  2>&1 | tee main_server.log
+```
+
+注意：
+
+- `/path/to/model` 必须替换成真实模型目录，目录下应包含 `config.json`。
+- main 版本不要带任何 `--enable-zipcache-*` 参数。
+- main 服务日志中不应该出现 `[ZipCacheV2]`。
+
+### 18.3 启动 ZipCache v2 版本
+
+在 ZipCache 分支目录中启动服务：
+
+```bash
+git switch ZipCache
+
+PYTHONPATH=python python -m minisgl \
+  --model-path /path/to/model \
+  --host 0.0.0.0 \
+  --port 30001 \
+  --cache-type radix \
+  --max-running-requests 16 \
+  --max-prefill-length 4096 \
+  --enable-zipcache-v2 \
+  --zipcache-unimportant-ratio 0.4 \
+  --zipcache-k-important-bit 4 \
+  --zipcache-k-unimportant-bit 2 \
+  --zipcache-v-important-bit 4 \
+  --zipcache-v-unimportant-bit 2 \
+  --zipcache-v2-compressed-pool-ratio 0.35 \
+  --zipcache-stats-interval 10 \
+  2>&1 | tee zipcache_v2_server.log
+```
+
+如果你想手动指定 compressed pool 大小，而不是按原 KV pool 比例估算，可以使用：
+
+```bash
+--zipcache-v2-compressed-pool-mb 4096
+```
+
+此时会优先使用固定 MB 值，忽略 `--zipcache-v2-compressed-pool-ratio`。
+
+ZipCache v2 启动成功后，应能在服务端日志中看到：
+
+```text
+[ZipCacheV2] enabled: GPU prefix demotion ...
+[ZipCacheV2] compressed pool initialized: capacity=...
+```
+
+当发生 demote / restore 时，应能看到类似日志：
+
+```text
+[ZipCacheV2] demoted: entry_id=... node=... tokens=... original=... estimated_4bit=... gpu_storage=...
+[ZipCacheV2] restored: entry_id=... node=... tokens=...
+[ZipCacheV2] stats: {...}
+```
+
+### 18.4 一键运行 main 测试
+
+main 服务启动后，在另一个终端执行：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main \
+  --base-url http://127.0.0.1:30000 \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5 \
+  --timeout 600
+```
+
+结果会保存到：
+
+```text
+experiment/logs/<时间>_main/
+```
+
+重点文件：
+
+```text
+report.md
+all_results_summary.json
+shared_prefix_summary.json
+mixed_length_summary.json
+correctness_summary.json
+```
+
+### 18.5 一键运行 ZipCache v2 测试
+
+ZipCache v2 服务启动后，在另一个终端执行：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v2 \
+  --base-url http://127.0.0.1:30001 \
+  --log-root experiment/logs \
+  --server-log zipcache_v2_server.log \
+  --gpu-sample-interval 0.5 \
+  --timeout 600
+```
+
+结果会保存到：
+
+```text
+experiment/logs/<时间>_zipcache_v2/
+```
+
+说明：
+
+- `report.md` 会记录本次运行模式和每组实验结果。
+- `--server-log` 用来保留服务端 ZipCache 日志路径，便于后续检查 `[ZipCacheV2] stats`。
+- 如果当前 `experiment/parse_zipcache_log.py` 只匹配 `[ZipCacheV1] stats`，则 v2 stats 需要先用 `grep` 手动查看：
+
+```bash
+grep "\[ZipCacheV2\]" zipcache_v2_server.log
+grep "\[ZipCacheV2\] stats" zipcache_v2_server.log
+```
+
+### 18.6 对比 main 和 ZipCache v2 的结果
+
+假设两次测试结果目录分别是：
+
+```text
+experiment/logs/2026xxxx_xxxxxx_main/
+experiment/logs/2026xxxx_xxxxxx_zipcache_v2/
+```
+
+可以先直接阅读两个 `report.md`：
+
+```bash
+cat experiment/logs/2026xxxx_xxxxxx_main/report.md
+cat experiment/logs/2026xxxx_xxxxxx_zipcache_v2/report.md
+```
+
+也可以用 `compare_results.py` 对单个 workload 的 jsonl 结果做对比。
+
+shared-prefix 对比：
+
+```bash
+python experiment/compare_results.py \
+  --baseline experiment/logs/2026xxxx_xxxxxx_main/shared_prefix.jsonl \
+  --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/shared_prefix.jsonl
+```
+
+mixed-length 对比：
+
+```bash
+python experiment/compare_results.py \
+  --baseline experiment/logs/2026xxxx_xxxxxx_main/mixed_length.jsonl \
+  --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/mixed_length.jsonl
+```
+
+正确性输出对比：
+
+```bash
+python experiment/compare_results.py \
+  --baseline experiment/logs/2026xxxx_xxxxxx_main/correctness.jsonl \
+  --candidate experiment/logs/2026xxxx_xxxxxx_zipcache_v2/correctness.jsonl \
+  --show-text
+```
+
+### 18.7 主要对比指标
+
+#### 性能指标
+
+从 `report.md` 和 `*_summary.json` 中重点看：
+
+```text
+request_throughput_rps
+output_chunks_per_s
+ttft_avg_s
+ttft_p50_s
+ttft_p90_s
+e2e_avg_s
+e2e_p50_s
+e2e_p90_s
+tpot_avg_s
+```
+
+含义：
+
+- `request_throughput_rps` 越高越好；
+- `output_chunks_per_s` 越高越好；
+- `ttft` 越低越好，表示首 token 延迟；
+- `e2e` 越低越好，表示端到端请求耗时；
+- `tpot` 越低越好，表示每个输出 token 平均耗时。
+
+#### GPU 显存指标
+
+重点看：
+
+```text
+gpu_memory_used_mb_min
+gpu_memory_used_mb_max
+gpu_memory_used_mb_avg
+```
+
+ZipCache v2 的目标是：
+
+```text
+在 shared-prefix / 长上下文 / 高并发场景下，gpu_memory_used_mb_max 低于 main。
+```
+
+但如果 compressed pool 预留太大，或者 demote 的冷 prefix 很少，显存可能不会明显下降。
+
+#### ZipCache v2 内部指标
+
+从 `zipcache_v2_server.log` 中查看 `[ZipCacheV2] stats`，重点看：
+
+```text
+num_demotions
+num_compressed_entries
+num_compressed_hits
+num_restore_attempts
+num_restore_success
+num_restore_fallback
+num_demote_rejected_pool_full
+active_estimated_compression_ratio
+active_storage_compression_ratio
+compressed_pool_capacity_bytes
+compressed_pool_used_bytes
+compressed_pool_utilization
+active_original_estimated_bytes
+active_compressed_storage_bytes
+```
+
+判断方式：
+
+- `num_demotions > 0`：说明确实有 prefix 被压缩保存；
+- `num_compressed_hits > 0`：说明后续请求命中过 compressed prefix；
+- `num_restore_success` 越高越好；
+- `num_restore_fallback` 越低越好；
+- `num_demote_rejected_pool_full` 很高，说明 compressed pool 太小；
+- `active_storage_compression_ratio > 1` 才说明压缩存储比原 fp16/bf16 更省；
+- `compressed_pool_utilization` 接近 1 时，说明 pool 接近满，需要考虑增大 pool 或优化 eviction。
+
+### 18.8 正确性判断
+
+ZipCache v2 是有损 KV 量化，所以输出不一定逐 token 完全等同 main。正确性建议分两层看：
+
+1. **服务正确性**
+
+   ZipCache v2 服务不能崩溃，不能 OOM，不能出现 restore 后 page table 错乱。
+
+2. **输出质量**
+
+   `correctness` workload 下，用 `--show-text` 对比 main 和 ZipCache v2 输出是否语义一致。
+
+如果输出差异明显，可以尝试：
+
+```bash
+--zipcache-unimportant-ratio 0.2
+--zipcache-k-unimportant-bit 4
+--zipcache-v-unimportant-bit 4
+```
+
+这样会减少低 bit token 或直接让所有 token 逻辑上按 4bit 量化，用于区分“量化误差”与“cache/restore 实现错误”。
+
+### 18.9 实验结论应如何写
+
+建议最终报告至少包含：
+
+```text
+模型名称和路径
+GPU 型号
+分支和 commit id
+启动参数
+workload 名称
+main 的 report.md
+ZipCache v2 的 report.md
+ZipCache v2 stats
+显存峰值对比
+TTFT / E2E / RPS 对比
+输出正确性观察
+```
+
+如果 ZipCache v2 出现以下现象：
+
+```text
+gpu_memory_used_mb_max 没下降
+RPS 下降明显
+TTFT/E2E 增大
+num_compressed_hits 很少
+compressed_pool_utilization 很低
+```
+
+通常说明 workload 没有产生足够 shared-prefix 复用，或者 demote/restore 的 Python 开销大于节省的 prefill/recompute 开销。
