@@ -67,11 +67,14 @@ class _V2QuantizedPart:
     min: torch.Tensor
     step: torch.Tensor
     bit: int
+    storage_bit: int = 4
+    logical_numel: int = 0
+    q_shape: Tuple[int, ...] = ()
     slices: Tuple[_V2PoolSlice, ...] = ()
 
     @property
     def estimated_bytes(self) -> int:
-        q_bits = self.q.numel() * self.bit
+        q_bits = self.logical_numel * self.bit
         scale_bytes = (self.min.numel() + self.step.numel()) * self.min.element_size()
         id_bytes = self.ids.numel() * self.ids.element_size()
         return (q_bits + 7) // 8 + scale_bytes + id_bytes
@@ -178,9 +181,9 @@ class _SegmentAllocator:
 class _V2CompressedPool:
     """ZipCache v2 固定大小 GPU compressed pool。
 
-    q 用 uint8 buffer 保存量化值；scale 用 fp16 buffer 保存 min/step；
-    ids 用 int64 buffer 保存 token id。当前还没有 bit-pack，因此 q buffer 的
-    真实 storage 是 uint8，estimated bytes 仍按配置 bit width 统计。
+    q 用 uint8 buffer 保存统一 4bit packed 量化值；scale 用 fp16 buffer 保存
+    min/step；ids 用 int64 buffer 保存 token id。unimportant token 即使按 2bit
+    量化，也先放进 4bit slot，换取简单稳定的 restore 路径。
     """
 
     def __init__(self, total_bytes: int, device: torch.device):
@@ -212,18 +215,21 @@ class _V2CompressedPool:
     ) -> _V2QuantizedPart:
         allocated: List[_V2PoolSlice] = []
         ids_flat = ids.reshape(-1).to(device=self.ids_buffer.device, dtype=torch.long)
+        q_shape = tuple(q.shape)
         q_flat = q.reshape(-1).to(device=self.q_buffer.device, dtype=torch.uint8)
+        logical_numel = q_flat.numel()
+        q_packed = _pack_4bit(q_flat)
         min_flat = min_val.reshape(-1).to(device=self.scale_buffer.device, dtype=torch.float16)
         step_flat = step.reshape(-1).to(device=self.scale_buffer.device, dtype=torch.float16)
 
         try:
             ids_offset = self._allocate(self.ids_allocator, "ids", ids_flat.numel(), allocated)
-            q_offset = self._allocate(self.q_allocator, "q", q_flat.numel(), allocated)
+            q_offset = self._allocate(self.q_allocator, "q", q_packed.numel(), allocated)
             min_offset = self._allocate(self.scale_allocator, "scale", min_flat.numel(), allocated)
             step_offset = self._allocate(self.scale_allocator, "scale", step_flat.numel(), allocated)
 
             ids_view = self.ids_buffer[ids_offset : ids_offset + ids_flat.numel()]
-            q_view = self.q_buffer[q_offset : q_offset + q_flat.numel()].view(q.shape)
+            q_view = self.q_buffer[q_offset : q_offset + q_packed.numel()]
             min_view = self.scale_buffer[min_offset : min_offset + min_flat.numel()].view(
                 min_val.shape
             )
@@ -231,7 +237,7 @@ class _V2CompressedPool:
                 step.shape
             )
             ids_view.copy_(ids_flat)
-            q_view.reshape(-1).copy_(q_flat)
+            q_view.copy_(q_packed)
             min_view.reshape(-1).copy_(min_flat)
             step_view.reshape(-1).copy_(step_flat)
             return _V2QuantizedPart(
@@ -240,6 +246,9 @@ class _V2CompressedPool:
                 min=min_view,
                 step=step_view,
                 bit=bit,
+                storage_bit=4,
+                logical_numel=logical_numel,
+                q_shape=q_shape,
                 slices=tuple(allocated),
             )
         except Exception:
@@ -870,7 +879,7 @@ def _choose_v2_pool_bytes(config: Any, original_kv_pool_bytes: int) -> int:
     pool_mb = int(getattr(config, "zipcache_v2_compressed_pool_mb", 0))
     if pool_mb > 0:
         return pool_mb * 1024 * 1024
-    ratio = float(getattr(config, "zipcache_v2_compressed_pool_ratio", 0.30))
+    ratio = float(getattr(config, "zipcache_v2_compressed_pool_ratio", 0.35))
     ratio = max(ratio, 0.01)
     return int(original_kv_pool_bytes * ratio)
 
@@ -1019,6 +1028,8 @@ def _quantize_mixed_gpu(
 def _quantize_part_gpu(
     x: torch.Tensor, ids: torch.Tensor, bit: int, pool: _V2CompressedPool | None = None
 ) -> _V2QuantizedPart:
+    if pool is not None and bit > 4:
+        raise ValueError("ZipCacheV2 packed pool supports bit width <= 4")
     ids = ids.to(device=x.device, dtype=torch.long)
     if ids.numel() == 0:
         empty_q = torch.empty(0, dtype=torch.uint8, device=x.device)
@@ -1047,6 +1058,9 @@ def _quantize_part_gpu(
         min=min_val.to(torch.float16).detach().clone(),
         step=step.to(torch.float16).detach().clone(),
         bit=bit,
+        storage_bit=8,
+        logical_numel=q.numel(),
+        q_shape=tuple(q.shape),
     )
 
 
@@ -1062,4 +1076,29 @@ def _dequantize_part_gpu_into(
 ) -> None:
     if part.ids.numel() == 0:
         return
-    out[part.ids] = (part.q.float() * part.step.float() + part.min.float()).to(dtype)
+    q = (
+        _unpack_4bit(part.q, part.logical_numel, part.q_shape)
+        if part.storage_bit == 4
+        else part.q
+    )
+    out[part.ids] = (q.float() * part.step.float() + part.min.float()).to(dtype)
+
+
+def _pack_4bit(q: torch.Tensor) -> torch.Tensor:
+    q = q.reshape(-1).to(torch.uint8).clamp_(0, 15)
+    if q.numel() == 0:
+        return q
+    if q.numel() % 2 != 0:
+        q = torch.cat([q, torch.zeros(1, dtype=torch.uint8, device=q.device)])
+    low = q[0::2] & 0x0F
+    high = (q[1::2] & 0x0F) << 4
+    return low | high
+
+
+def _unpack_4bit(packed: torch.Tensor, logical_numel: int, shape: Tuple[int, ...]) -> torch.Tensor:
+    if logical_numel == 0:
+        return torch.empty(shape, dtype=torch.uint8, device=packed.device)
+    out = torch.empty(packed.numel() * 2, dtype=torch.uint8, device=packed.device)
+    out[0::2] = packed & 0x0F
+    out[1::2] = (packed >> 4) & 0x0F
+    return out[:logical_numel].view(shape)

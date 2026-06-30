@@ -44,7 +44,7 @@ radix prefix normal KV
 2. **压缩和解压都在 GPU tensor 上完成**，不再像 v1 一样把 compressed KV 保存到 CPU。
 3. **restore 不是写入独立 restore workspace**，而是分配新的 normal KV page，并把 radix node 重新标记为 fp16 normal node。这样实现更保守，便于保证 page table 和原 attention backend 正确运行。
 4. **当前 compressed archive 已改为固定大小 GPU compressed pool**。启动时预分配 `q_buffer`、`scale_buffer`、`ids_buffer` 三个大 tensor，entry 只持有其中的 slice。
-5. **当前量化值用 `torch.uint8` 保存**，按 bit width 统计 `estimated_compressed_bytes_4bit`，但真实 GPU storage 仍是 uint8 tensor。日志中同时输出 `gpu_storage`，不能把当前版本解释为真实 packed 4bit 显存占用。
+5. **当前 q 数据已统一使用 4bit packed 存储**。important token 逻辑上按 4bit 量化，unimportant token 可按 2bit 量化，但物理上也放入 4bit slot，换取简单稳定的 GPU restore 路径。
 6. **当前 demote 时机是请求 finished 后的 radix node**，不压缩活跃 decode 请求。
 7. compressed node 如果发生 partial match，当前保守回退到父节点，不切分 compressed entry。
 
@@ -62,7 +62,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-k-unimportant-bit 2 \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
-  --zipcache-v2-compressed-pool-ratio 0.60 \
+  --zipcache-v2-compressed-pool-ratio 0.35 \
   --zipcache-stats-interval 10
 ```
 
@@ -110,7 +110,7 @@ CompressedEntry 内部保存很多独立 GPU tensor:
 
 ```python
 class _V2CompressedPool:
-    q_buffer: torch.uint8
+    q_buffer: torch.uint8        # 保存两个 4bit value 打包后的 byte
     scale_buffer: torch.float16
     ids_buffer: torch.long
 
@@ -139,12 +139,10 @@ pool 容量配置：
 如果不指定 MB，则按原 KV pool 估算：
 
 ```text
---zipcache-v2-compressed-pool-ratio 0.30
+--zipcache-v2-compressed-pool-ratio 0.35
 ```
 
-当前代码默认使用 `0.60`。原因是当前实现还没有 bit-pack，量化值真实保存在 `uint8` tensor 中，实际 q 数据本体约是 fp16/bf16 的 50%，再加上 scale/id/allocator 余量后，`0.55 ~ 0.60` 更适合稳定实验。
-
-如果未来实现真实 packed 4bit，默认值可以降到 `0.30`。`0.30` 的含义是：按真实 packed 4bit 的目标设计，compressed pool 约为原 fp16/bf16 KV pool 的 30%。
+当前代码默认使用 `0.35`。原因是 q 数据已经统一 4bit packed，q 本体约是 fp16/bf16 的 25%，再加上 scale/id/allocator metadata 后，`0.30 ~ 0.35` 更适合稳定实验。
 
 日志会同时输出：
 
@@ -163,6 +161,115 @@ active_compressed_storage_bytes
 ```
 
 这比动态 archive 更适合实验，因为显存上限、pool 使用率、demote rejected 次数都可以直接统计。
+
+### 0.3 compressed pool 的 packed 存储策略
+
+当前代码中的 `q_buffer` 已经使用 `torch.uint8` 作为 packed byte buffer，而不是每个量化值占一个 uint8。两个 4bit value 会打包进一个 uint8：
+
+```text
+fp16/bf16 原始值: 16 bit
+旧 uint8 q:       8 bit
+当前 4bit packed: 4 bit
+目标 2bit q:      2 bit
+```
+
+因此，当前 q 数据本体相比 fp16/bf16 已经可以省约 75%。但 unimportant token 物理上仍占 4bit，还没有达到严格 2bit/4bit mixed precision 的最优压缩率。
+
+有两种可选设计。
+
+#### 方案 A：严格 4bit/2bit mixed packed
+
+important token 使用 4bit packed：
+
+```text
+2 个 4bit value -> 1 个 uint8
+```
+
+unimportant token 使用 2bit packed：
+
+```text
+4 个 2bit value -> 1 个 uint8
+```
+
+优点：
+
+1. 最接近 ZipCache 论文设计；
+2. unimportant token 的真实存储开销最低；
+3. 在 unimportant ratio 较高时压缩率最好。
+
+缺点：
+
+1. compressed entry 需要保存更多 metadata：
+
+   ```text
+   bit_width
+   original_shape
+   logical_numel
+   packed_numel
+   pack_axis / flatten_order
+   ids slice
+   q slice
+   min/step slice
+   ```
+
+2. restore 时必须按 `bit_width` 选择不同 unpack 路径；
+3. 2bit 和 4bit 的 packed 长度不同，allocator 碎片会更明显；
+4. 如果后续要支持 partial restore / node split，需要同时切分 packed q 和 ids，复杂度较高；
+5. radix cache 命中后不再只拿到 compressed handle，还必须通过 handle 中的每个 `TensorSlice` metadata 才能正确 unpack。
+
+也就是说，方案 A 的压缩率最好，但工程复杂度和错误风险也最高。
+
+#### 方案 B：全部 q 数据统一 4bit packed
+
+无论 important 还是 unimportant，真实存储都使用 4bit packed：
+
+```text
+important token:   4bit packed
+unimportant token: 4bit packed
+```
+
+逻辑上仍然可以记录：
+
+```text
+requested_bit_width = 2 or 4
+storage_bit_width = 4
+```
+
+如果 token 原本应按 2bit 量化，有两种选择：
+
+1. 仍按 2bit 量化，q 值范围是 `[0, 3]`，但用 4bit slot 保存；
+2. 直接按 4bit 量化，降低精度损失，但与论文 2bit unimportant 不完全一致。
+
+v2 推荐优先采用第 1 种：**量化语义仍保留 2bit/4bit，物理存储统一 4bit packed**。
+
+优点：
+
+1. 相比旧版 uint8 storage，q 数据真实显存减半；
+2. pack/unpack 只有一种 4bit 格式，restore 路径简单；
+3. `TensorSlice` 只需要记录逻辑 bit 和 storage bit，不需要 2bit/4bit 两套复杂 unpack；
+4. compressed pool allocator 统一按 packed byte 分配，碎片更少；
+5. radix cache 命中路径几乎不变，只是 restore 时根据 handle metadata 从 4bit packed q 中解包。
+
+缺点：
+
+1. unimportant token 如果逻辑上是 2bit，会浪费一半 q 存储；
+2. 压缩率低于严格 4bit/2bit mixed packed；
+3. 与论文最优压缩率有差距。
+
+综合当前 miniSGLang v2 的目标：先稳定在 GPU 上运行、便于比较显存、避免大改 kernel 和 cache 框架，推荐路线是：
+
+```text
+当前版本: 统一 4bit packed q storage
+后续优化: important 4bit + unimportant 2bit mixed packed
+```
+
+统一 4bit packed 后，compressed pool 默认容量建议约为：
+
+```text
+compressed_pool_ratio = 0.30 ~ 0.35
+```
+
+其中 `0.25` 是纯 4bit q 数据本体，额外 `0.05 ~ 0.10` 留给 `min/step/ids/allocator` metadata。
 
 ## 1. 当前 v1 的问题
 
@@ -482,13 +589,13 @@ normal_fp16_pool_bytes =
   - restore_workspace_bytes
 ```
 
-推荐默认值：
+当前统一 4bit packed 实现推荐默认值：
 
 ```text
---zipcache-v2-compressed-pool-ratio 0.30
+--zipcache-v2-compressed-pool-ratio 0.35
 ```
 
-这个默认值的含义是：如果冷 KV 最终都能以真实 packed 4bit 形式保存，compressed pool 理论上可以容纳接近一个完整原 KV pool 的冷 KV 内容；同时 normal fp16 pool 保留约 70% 的原始预算给热 KV、当前请求和未压缩页面使用。
+原因是当前 q 数据本体已经是 4bit packed，约为 fp16/bf16 的 25%；再加上 min/step/ids/allocator metadata，`0.30 ~ 0.35` 比较稳。更激进的配置可以尝试 `0.30`，但 pool full 时 demote 会更容易失败。
 
 如果实验目标不是“让全部 KV 都可被压缩保存”，而是只保存一部分冷 prefix，可以进一步按 demote 比例估算：
 
@@ -508,7 +615,7 @@ compressed_pool_bytes = original_kv_bytes * 0.50 * 0.30
                       = original_kv_bytes * 0.15
 ```
 
-注意 v2-a 如果先用 `torch.uint8` 或 `torch.int8` 存放量化值，但不做真正 4bit packing，那么量化数据本体是 8bit，不是 4bit。此时保守容量应按约 55% ~ 60% 的原 KV pool 估算：
+旧版 v2-a 如果用 `torch.uint8` 或 `torch.int8` 存放每个量化值，但不做真正 4bit packing，那么量化数据本体是 8bit，不是 4bit。此时保守容量才需要按约 55% ~ 60% 的原 KV pool 估算：
 
 ```text
 uint8_payload_bytes = original_kv_bytes * 0.50
@@ -549,20 +656,27 @@ entry
 ```python
 @dataclass
 class TensorSlice:
-    buffer_name: str        # 例如 "q_u8", "scale_fp16", "ids_i32"
-    offset: int             # 在 flat buffer 中的起始元素下标
-    length: int             # 元素数量，不是字节数量
-    shape: tuple[int, ...]  # 恢复 view 时使用
+    buffer_name: str              # 例如 "q_packed_u8", "scale_fp16", "ids_i64"
+    offset: int                   # 在 flat buffer 中的起始元素下标
+    length: int                   # buffer 中的元素数量；对 q 来说是 packed uint8 数量
+    shape: tuple[int, ...]        # 解包后恢复原始 tensor view 时使用
     dtype: torch.dtype
+
+    # packed q 需要的额外信息。
+    logical_numel: int = 0        # 解包后有多少个量化值
+    packed_numel: int = 0         # 实际占用多少个 uint8
+    requested_bit_width: int = 4  # 算法希望使用的 bit，例如 important=4, unimportant=2
+    storage_bit_width: int = 4    # 实际 packed 存储 bit。当前 v2 统一使用 4
+    pack_order: str = "little"    # 低位优先，例如 q0 放低 4bit，q1 放高 4bit
 ```
 
 compressed pool 内部维护若干大 buffer：
 
 ```python
 class ZipCacheCompressedPool:
-    q_u8_buffer: torch.Tensor        # uint8，保存 packed/int8 quantized data
+    q_packed_u8_buffer: torch.Tensor # uint8，保存 packed 4bit 或后续 mixed 2/4bit data
     scale_fp16_buffer: torch.Tensor  # fp16，保存 min/step/scale
-    ids_i32_buffer: torch.Tensor     # int32，保存 important/unimportant token ids
+    ids_i64_buffer: torch.Tensor     # int64，保存 important/unimportant token ids
 
     q_allocator: SegmentAllocator
     scale_allocator: SegmentAllocator
@@ -574,7 +688,26 @@ class ZipCacheCompressedPool:
 - PyTorch 对不同 dtype 的 view/对齐处理更简单；
 - `q`、`scale`、`ids` 生命周期一致但 dtype 不同；
 - 便于统计每类数据真实占用；
-- 后续实现 packed 2-bit/4-bit 时只需要替换 `q_u8_buffer` 的写入逻辑。
+- 实现 packed 4bit 时只需要替换 `q_packed_u8_buffer` 的写入/读取逻辑；
+- 如果后续扩展 strict 2bit/4bit mixed packed，只需要让每个 `TensorSlice.storage_bit_width` 支持 2 或 4。
+
+radix cache 命中 compressed prefix 后，restore 流程不应该只拿 `q` 的 offset，还必须读取 `TensorSlice` 中的 packed metadata：
+
+```text
+TensorSlice.offset / length
+TensorSlice.logical_numel
+TensorSlice.shape
+TensorSlice.requested_bit_width
+TensorSlice.storage_bit_width
+TensorSlice.pack_order
+```
+
+否则无法知道：
+
+1. 从 `q_packed_u8_buffer` 中读多少 byte；
+2. 解包后应该恢复多少个 quantized value；
+3. 解包后的 tensor 应该 reshape 成什么形状；
+4. 反量化时应该按 2bit 语义还是 4bit 语义解释 q 值。
 
 ### 5.2.4 pool allocator 设计
 
@@ -698,7 +831,9 @@ PrefillAdder._try_allocate_one()
           -> 如果命中的是 normal fp16 node:
                返回原 RadixCacheHandle
           -> 如果命中的是 compressed node:
-               从 compressed pool 读取 q/min/step/ids
+               从 compressed handle 读取 TensorSlice metadata
+               从 compressed pool 读取 packed q/min/step/ids
+               根据 storage_bit_width/logical_numel/shape unpack
                GPU dequantize 到 restore workspace 或重新分配的 normal page
                返回 RestoredCacheHandle(cached_len, restored_indices)
           -> 如果 restore 失败:
@@ -742,6 +877,8 @@ v2 新增的区别是：
 3. compressed 命中必须先 materialize，不能把旧 indices 直接写入 page table；
 4. restore 失败时必须降低 `cached_len`，让未恢复部分重新 prefill；
 5. restored workspace indices 不能作为长期 prefix cache value 再插入 radix。
+
+需要注意：radix cache 只负责 token prefix 是否命中，不负责解释 packed bit 存储。`storage_bit_width`、`logical_numel`、`packed_numel`、`shape` 等信息必须保存在 compressed handle / `TensorSlice` 中，由 `ZipCacheV2Manager.materialize_match()` 在 restore 时使用。
 
 这个拆分是 v2 正确性的核心。否则会出现严重错误：radix tree 命中了一个已经 demote 的 prefix，但 scheduler 仍把旧 page indices 写进新请求的 page table，而这些 page 可能已经被其他请求复用，attention 会读到错误 KV。
 
@@ -793,7 +930,7 @@ restore workspace: 临时恢复，attention 后可复用
 
 这是 v2 正确性的硬性要求。
 
-第一版 v2 不建议真的 bit-pack 到 2-bit/4-bit，因为 PyTorch 原生 tensor 不支持 int2/int4 dtype。建议分两阶段：
+PyTorch 原生 tensor 不支持 int2/int4 dtype，所以低 bit KV 必须放在 `uint8` buffer 中手动 pack。建议分三阶段：
 
 #### v2-a：GPU int8 affine quantization
 
@@ -810,7 +947,38 @@ restore workspace: 临时恢复，attention 后可复用
 - 真实 GPU 显存不一定达到 2-bit/4-bit 估算；
 - 但已经避免 CPU offload。
 
-#### v2-b：packed uint8 storage
+#### v2-b：统一 4bit packed uint8 storage
+
+这是当前 v2 代码已经采用的实现。
+
+无论 important 还是 unimportant，物理存储都用 4bit packed：
+
+```text
+4-bit: 2 个 value pack 到 1 个 uint8
+```
+
+unimportant token 如果算法配置为 2bit，则：
+
+```text
+requested_bit_width = 2
+storage_bit_width = 4
+```
+
+也就是说，q 值仍然只取 `[0, 3]`，但存入 4bit slot。这样浪费一半 unimportant q 空间，但工程上有三个好处：
+
+1. restore 只有一种 4bit unpack 路径；
+2. q allocator 只按 packed uint8 管理，不需要区分 2bit/4bit pool；
+3. radix 命中后 handle metadata 简单，不容易把 bit width、shape、offset 对错。
+
+pack 示例：
+
+```python
+packed = (q0 & 0xF) | ((q1 & 0xF) << 4)
+```
+
+如果元素数是奇数，最后一个 uint8 的高 4bit 填 0，并通过 `logical_numel` 记录真实元素数量。
+
+#### v2-c：严格 2bit/4bit mixed packed
 
 实现 2-bit/4-bit packing：
 
@@ -819,7 +987,7 @@ restore workspace: 临时恢复，attention 后可复用
 2-bit: 4 个 value pack 到 1 个 uint8
 ```
 
-这部分可以先用 PyTorch bit 操作实现：
+4bit：
 
 ```python
 packed = (q0 & 0xF) | ((q1 & 0xF) << 4)
@@ -831,7 +999,14 @@ packed = (q0 & 0xF) | ((q1 & 0xF) << 4)
 packed = q0 | (q1 << 2) | (q2 << 4) | (q3 << 6)
 ```
 
-后续如果性能不够，再写 Triton kernel，但 v2 文档阶段不要求。
+严格 mixed packed 的额外要求：
+
+1. 每个 q slice 必须保存 `storage_bit_width`；
+2. 2bit 和 4bit 的 packed length 计算不同；
+3. restore 时根据 `storage_bit_width` 选择 unpack 函数；
+4. 如果 compressed node 将来要支持 split，需要按 bit packed 边界重新切分。
+
+因此 v2-c 作为压缩率优化阶段，不作为当前优先实现。
 
 ### 5.3 scale/min metadata
 

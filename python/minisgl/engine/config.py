@@ -73,7 +73,7 @@ class EngineConfig:
     zipcache_stats_interval: float = 30.0
     zipcache_v2_demote_on_finish: bool = True
     zipcache_v2_compressed_pool_mb: int = 0
-    zipcache_v2_compressed_pool_ratio: float = 0.60
+    zipcache_v2_compressed_pool_ratio: float = 0.35
 
     @cached_property
     def hf_config(self):
