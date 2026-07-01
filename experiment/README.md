@@ -166,6 +166,12 @@ python experiment/run_all_experiments.py \
   --only gsm8k_public_correctness,cmmlu_public_correctness,ruler_squad_qa
 ```
 
+正确性 workload 会自动使用更大的 `max_tokens`，并向服务端发送
+`ignore_eos=false`。这样 Qwen3 这类会输出 `<think>` 的模型不容易在推理中途被
+`max_tokens` 截断；性能压测 workload 仍保留固定长度输出，便于比较吞吐。
+如果 `report.md` 中某个正确性实验的 `maxed` 仍然较大，说明仍有请求打满了
+`max_tokens`，需要继续提高该 workload 的生成上限。
+
 只跑长上下文和 shared-prefix：
 
 ```bash

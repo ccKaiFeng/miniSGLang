@@ -87,7 +87,7 @@ def make_gsm8k(root: Path, out: Path, limit: int) -> int:
                     f"Question: {row['question']}"
                 ),
                 "answer": extract_gsm8k_final_answer(row["answer"]),
-                "max_tokens": 256,
+                "max_tokens": 1024,
             }
         )
     return write_jsonl(out, rows)
@@ -123,7 +123,7 @@ def make_cmmlu(root: Path, out: Path, limit: int, subjects: List[str]) -> int:
                     "choices": {"A": row["A"], "B": row["B"], "C": row["C"], "D": row["D"]},
                     "prompt": prompt,
                     "answer": str(row["Answer"]).strip().upper(),
-                    "max_tokens": 32,
+                    "max_tokens": 128,
                 }
             )
             if len(rows) >= limit:
@@ -173,7 +173,7 @@ def collect_longbench_rows(
                     "answer_type": "text_contains",
                     "prompt": longbench_prompt(row, max_context_chars=max_context_chars),
                     "answers": list(answers) if isinstance(answers, list) else [str(answers)],
-                    "max_tokens": 192,
+                    "max_tokens": 512,
                     "input_chars": len(str(row.get("context", ""))) + len(str(row.get("input", ""))),
                     "reported_length": row.get("length"),
                 }
@@ -282,7 +282,7 @@ def make_ruler_squad(root: Path, out: Path, limit: int) -> int:
                             f"Context:\n{context}\n\nQuestion: {qa.get('question', '')}\n"
                         ),
                         "answers": answers,
-                        "max_tokens": 96,
+                        "max_tokens": 256,
                     }
                 )
                 if len(rows) >= limit:
