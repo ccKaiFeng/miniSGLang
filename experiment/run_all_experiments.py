@@ -17,7 +17,8 @@ EXPERIMENTS = [
         "dataset": "workloads/gsm8k_public_correctness.jsonl",
         "concurrency": 1,
         "repeat": 1,
-        "max_tokens": 256,
+        "max_tokens": 1024,
+        "ignore_eos": False,
         "description": "GSM8K 公开测试集数学推理正确性测试，使用标准数字答案自动计算 accuracy。",
         "evaluate": "auto",
     },
@@ -26,7 +27,8 @@ EXPERIMENTS = [
         "dataset": "workloads/cmmlu_public_correctness.jsonl",
         "concurrency": 1,
         "repeat": 1,
-        "max_tokens": 32,
+        "max_tokens": 128,
+        "ignore_eos": False,
         "description": "CMMLU 公开中文多学科选择题正确性测试，自动抽取 A/B/C/D 选项并计算 accuracy。",
         "evaluate": "auto",
     },
@@ -35,7 +37,8 @@ EXPERIMENTS = [
         "dataset": "workloads/longbench_public_qa.jsonl",
         "concurrency": 4,
         "repeat": 1,
-        "max_tokens": 192,
+        "max_tokens": 512,
+        "ignore_eos": False,
         "description": "LongBench 公开长上下文问答任务，用于同时观察长输入性能和近似 answer contains 正确性。",
         "evaluate": "auto",
     },
@@ -68,7 +71,8 @@ EXPERIMENTS = [
         "dataset": "workloads/ruler_squad_qa.jsonl",
         "concurrency": 2,
         "repeat": 1,
-        "max_tokens": 96,
+        "max_tokens": 256,
+        "ignore_eos": False,
         "description": "RULER helper 下载得到的 SQuAD 问答数据，用于长上下文检索类正确性近似评估。",
         "evaluate": "auto",
     },
@@ -172,6 +176,8 @@ def summarize_for_report(summary: Dict[str, Any]) -> Dict[str, Any]:
         "gpu_memory_used_mb_min",
         "gpu_memory_used_mb_max",
         "gpu_memory_used_mb_avg",
+        "finish_reasons",
+        "num_reached_max_tokens",
     ]
     return {key: summary.get(key) for key in keys if key in summary}
 
@@ -204,16 +210,17 @@ def write_markdown_report(
         "",
         "## Experiments",
         "",
-        "| experiment | ok/total | rps | chunks/s | ttft avg | ttft p90 | e2e avg | tpot avg | gpu max MB |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| experiment | ok/total | maxed | rps | chunks/s | ttft avg | ttft p90 | e2e avg | tpot avg | gpu max MB |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in results:
         summary = row["summary"]
         ok_total = f"{summary.get('num_ok', 0)}/{summary.get('num_requests', 0)}"
         lines.append(
-            "| {name} | {ok_total} | {rps:.4g} | {cps:.4g} | {ttft:.4g} | {ttft90:.4g} | {e2e:.4g} | {tpot:.4g} | {gpu} |".format(
+            "| {name} | {ok_total} | {maxed} | {rps:.4g} | {cps:.4g} | {ttft:.4g} | {ttft90:.4g} | {e2e:.4g} | {tpot:.4g} | {gpu} |".format(
                 name=row["name"],
                 ok_total=ok_total,
+                maxed=summary.get("num_reached_max_tokens", "n/a"),
                 rps=float(summary.get("request_throughput_rps", 0)),
                 cps=float(summary.get("output_chunk_throughput_cps", 0)),
                 ttft=float(summary.get("ttft_avg_s", 0)),
@@ -369,6 +376,8 @@ def main() -> None:
         ]
         if exp["max_tokens"] is not None:
             cmd.extend(["--max-tokens", str(exp["max_tokens"])])
+        if exp.get("ignore_eos") is not None:
+            cmd.extend(["--ignore-eos", "true" if exp["ignore_eos"] else "false"])
         print(f"\n===== Running {name} ({args.mode}) =====")
         exit_code = run_command(cmd, log_file)
         if exit_code != 0:

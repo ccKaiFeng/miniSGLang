@@ -197,16 +197,33 @@ class CacheManager:
                     or getattr(config, "zipcache_v4_demote_on_finish", False)
                 )
             if should_demote and hasattr(new_handle, "node"):
-                # v2 初版只 demote ref_count == 0 的 finished prefix 叶子节点。
-                # 成功后再释放原 normal fp16 page，保证压缩失败不影响原逻辑。
-                node = new_handle.node
-                demoted = self.zipcache_manager.demote_node(node)
-                if demoted is not None:
-                    self.prefix_cache.mark_node_compressed(
-                        node,
-                        self.zipcache_manager.entry_by_node_uuid[node.uuid],
-                    )
-                    self._free(demoted)
+                # v3/v4 的 normal pool 被刻意缩小为工作区。如果只压缩 finished
+                # prefix 的叶子节点，radix tree 中可能留下 normal 父节点 + compressed
+                # 子节点：父节点会被计入 evictable_size，但由于它不再是叶子，原
+                # radix evict() 无法真正释放它，normal pool 紧张时会触发断言。
+                #
+                # 因此 v3/v4 在请求结束时尝试把整条已解锁路径上的 normal 节点都
+                # demote 到 compressed pool。v2 保持原来的叶子节点 demote 行为。
+                demote_whole_path = bool(
+                    getattr(config, "enable_zipcache_v3", False)
+                    or getattr(config, "enable_zipcache_v4", False)
+                )
+                if demote_whole_path and hasattr(self.prefix_cache, "path_nodes"):
+                    nodes_to_demote = list(reversed(self.prefix_cache.path_nodes(new_handle)))
+                else:
+                    nodes_to_demote = [new_handle.node]
+
+                demoted_parts: List[torch.Tensor] = []
+                for node in nodes_to_demote:
+                    demoted = self.zipcache_manager.demote_node(node)
+                    if demoted is not None:
+                        self.prefix_cache.mark_node_compressed(
+                            node,
+                            self.zipcache_manager.entry_by_node_uuid[node.uuid],
+                        )
+                        demoted_parts.append(demoted)
+                if demoted_parts:
+                    self._free(torch.cat(demoted_parts))
             self.release_handle_resources(old_handle)
         else:  # keep the tail part, update the handle
             # 请求还要继续 decode，更新 handle 并锁定，防止被驱逐。

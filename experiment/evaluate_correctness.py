@@ -98,6 +98,8 @@ def evaluate(dataset: Path, results: Path) -> Dict[str, Any]:
         key = base_id(req_id)
         source = expected.get(key)
         output_text = str(row.get("output_text", ""))
+        output_chunks = int(row.get("output_chunks") or 0)
+        max_tokens = int(row.get("max_tokens") or 0)
         answer_type = str((source or {}).get("answer_type") or "number")
         expected_answer: Any = None
         prediction: str | None = None
@@ -128,7 +130,13 @@ def evaluate(dataset: Path, results: Path) -> Dict[str, Any]:
                 "expected": expected_answer,
                 "prediction": prediction,
                 "correct": is_correct,
-                "output_preview": output_text[:300],
+                "output_chars": len(output_text),
+                "output_chunks": output_chunks,
+                "max_tokens": max_tokens,
+                "finish_reason": row.get("finish_reason"),
+                "hit_max_tokens": bool(max_tokens and output_chunks >= max_tokens),
+                "output_preview": output_text[:1200],
+                "output_tail": output_text[-500:] if len(output_text) > 1200 else "",
             }
         )
     return {

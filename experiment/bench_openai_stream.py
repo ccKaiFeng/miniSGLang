@@ -14,7 +14,21 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 
-def load_dataset(path: Path, repeat: int, max_tokens_override: int | None) -> List[Dict[str, Any]]:
+def parse_bool(value: str) -> bool:
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "yes", "y", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"invalid boolean value: {value!r}")
+
+
+def load_dataset(
+    path: Path,
+    repeat: int,
+    max_tokens_override: int | None,
+    ignore_eos_override: bool | None,
+) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
         for line in f:
@@ -30,6 +44,8 @@ def load_dataset(path: Path, repeat: int, max_tokens_override: int | None) -> Li
                 item["max_tokens"] = max_tokens_override
             elif "max_tokens" not in item and "output_len" in item:
                 item["max_tokens"] = int(item["output_len"])
+            if ignore_eos_override is not None:
+                item["ignore_eos"] = ignore_eos_override
             expanded.append(item)
     return expanded
 
@@ -126,7 +142,14 @@ def summarize(results: List[Dict[str, Any]], gpu_summary: Dict[str, Any]) -> Dic
         "tpot_p50_s": percentile(tpot, 0.50),
         "tpot_p90_s": percentile(tpot, 0.90),
         "tpot_p99_s": percentile(tpot, 0.99),
+        "finish_reasons": {},
+        "num_reached_max_tokens": 0,
     }
+    for row in ok:
+        reason = str(row.get("finish_reason") or "unknown")
+        summary["finish_reasons"][reason] = summary["finish_reasons"].get(reason, 0) + 1
+        if int(row.get("output_chunks") or 0) >= int(row.get("max_tokens") or 0):
+            summary["num_reached_max_tokens"] += 1
     summary.update(gpu_summary)
     return summary
 
@@ -158,7 +181,7 @@ def run_one(base_url: str, model: str, item: Dict[str, Any], timeout: float) -> 
         "temperature": 0.0,
         "top_k": 1,
         "top_p": 1.0,
-        "ignore_eos": True,
+        "ignore_eos": bool(item.get("ignore_eos", True)),
         "stream": True,
     }
     req = urllib.request.Request(
@@ -170,6 +193,7 @@ def run_one(base_url: str, model: str, item: Dict[str, Any], timeout: float) -> 
     output_parts: List[str] = []
     chunk_times: List[float] = []
     first_token_time = None
+    finish_reason = None
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
             for line in iter_sse_lines(response):
@@ -179,7 +203,10 @@ def run_one(base_url: str, model: str, item: Dict[str, Any], timeout: float) -> 
                 if data == "[DONE]":
                     break
                 obj = json.loads(data)
-                delta = obj["choices"][0].get("delta", {})
+                choice = obj["choices"][0]
+                if choice.get("finish_reason") is not None:
+                    finish_reason = choice.get("finish_reason")
+                delta = choice.get("delta", {})
                 text = delta.get("content", "")
                 if text:
                     now = time.perf_counter()
@@ -194,6 +221,8 @@ def run_one(base_url: str, model: str, item: Dict[str, Any], timeout: float) -> 
             "ok": True,
             "prompt_chars": len(item["prompt"]),
             "max_tokens": payload["max_tokens"],
+            "ignore_eos": payload["ignore_eos"],
+            "finish_reason": finish_reason,
             "output_chunks": output_chunks,
             "output_text": "".join(output_parts),
             "ttft_s": None if first_token_time is None else first_token_time - start,
@@ -214,6 +243,7 @@ def run_one(base_url: str, model: str, item: Dict[str, Any], timeout: float) -> 
             "error": repr(e),
             "prompt_chars": len(item.get("prompt", "")),
             "max_tokens": payload["max_tokens"],
+            "ignore_eos": payload["ignore_eos"],
             "start_time": start_wall,
             "end_time": time.time(),
         }
@@ -229,11 +259,17 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=1)
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--max-tokens", type=int, default=None)
+    parser.add_argument(
+        "--ignore-eos",
+        type=parse_bool,
+        default=None,
+        help="Override request ignore_eos. Use false for correctness tests and true for fixed-length performance tests.",
+    )
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--gpu-sample-interval", type=float, default=0.0)
     args = parser.parse_args()
 
-    items = load_dataset(args.dataset, args.repeat, args.max_tokens)
+    items = load_dataset(args.dataset, args.repeat, args.max_tokens, args.ignore_eos)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
 
