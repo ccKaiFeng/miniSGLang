@@ -665,6 +665,9 @@ class ZipCacheV1Manager:
         if self.enabled():
             logger.info_rank0("[ZipCacheV1] stats: %s", self.stats())
 
+    def maybe_log_stats(self) -> None:
+        self._maybe_log_stats()
+
     def _restore_batch(
         self,
         layer_id: int,
@@ -1097,6 +1100,15 @@ class ZipCacheV2Manager:
     def log_stats(self) -> None:
         if self.enabled():
             logger.info_rank0("[ZipCacheV2] stats: %s", self.stats())
+
+    def maybe_log_stats(self) -> None:
+        interval = float(self.config.zipcache_stats_interval)
+        if interval <= 0:
+            return
+        now = time.monotonic()
+        if now - self._last_stats_log >= interval:
+            self._last_stats_log = now
+            self.log_stats()
 
     def _restore_entry_to_indices(self, entry: _V2CompressedEntry, indices: torch.Tensor) -> None:
         indices = indices.to(self.kv_pool.device, non_blocking=True)

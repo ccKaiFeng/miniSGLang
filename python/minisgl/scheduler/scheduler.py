@@ -113,7 +113,10 @@ class Scheduler(SchedulerIOMixin):
         # 空闲时做一次 cache 完整性检查，尽早发现 page 泄漏或统计错误。
         self.cache_manager.check_integrity()
         if self.engine.zipcache_manager is not None:
-            self.engine.zipcache_manager.log_stats()
+            if hasattr(self.engine.zipcache_manager, "maybe_log_stats"):
+                self.engine.zipcache_manager.maybe_log_stats()
+            else:
+                self.engine.zipcache_manager.log_stats()
 
     def overlap_loop(self, last_data: ForwardData | None) -> ForwardData | None:
         """
