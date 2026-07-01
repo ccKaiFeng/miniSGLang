@@ -352,7 +352,7 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         "--zipcache-stats-interval",
         type=float,
         default=ServerArgs.zipcache_stats_interval,
-        help="Seconds between ZipCache v1 stats logs. Set <= 0 to disable periodic logs.",
+        help="Seconds between ZipCache stats logs. Set <= 0 to disable periodic logs.",
     )
     parser.add_argument(
         "--zipcache-v2-compressed-pool-mb",

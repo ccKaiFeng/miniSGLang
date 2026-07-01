@@ -990,7 +990,7 @@ class ZipCacheV2Manager:
             )
             self._update_active_stats()
             tag = _zipcache_version_name(self.config)
-            logger.info_rank0(
+            logger.debug_rank0(
                 "[%s] demoted: entry_id=%s node=%s tokens=%s "
                 "original=%s estimated_4bit=%s gpu_storage=%s",
                 tag,
@@ -1248,7 +1248,7 @@ class ZipCacheV3Manager(ZipCacheV2Manager):
                 if node.length < min_restore:
                     self._stats["num_restore_rejected_small_prefix"] += 1
                     self._stats["num_restore_fallback"] += 1
-                    logger.info_rank0(
+                    logger.debug_rank0(
                         "[%s] restore skipped: node=%s tokens=%s min_restore=%s",
                         tag,
                         node.uuid,
@@ -1293,7 +1293,7 @@ class ZipCacheV3Manager(ZipCacheV2Manager):
                 if keep_compressed:
                     self._stats["num_temporary_restore_pages"] += restored_pages
                 if keep_compressed:
-                    logger.info_rank0(
+                    logger.debug_rank0(
                         "[%s] restored temporary: entry_id=%s node=%s tokens=%s",
                         tag,
                         entry.entry_id,
@@ -1301,7 +1301,7 @@ class ZipCacheV3Manager(ZipCacheV2Manager):
                         node.length,
                     )
                 else:
-                    logger.info_rank0(
+                    logger.debug_rank0(
                         "[%s] restored permanent: entry_id=%s node=%s tokens=%s",
                         tag,
                         entry.entry_id,

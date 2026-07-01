@@ -977,7 +977,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-v-unimportant-bit 2 \
   --zipcache-v3-keep-compressed-after-restore \
   --zipcache-v3-min-restore-tokens 256 \
-  --zipcache-stats-interval 10 \
+  --zipcache-stats-interval 30 \
   2>&1 | tee zipcache_v3_server.log
 ```
 
@@ -1000,7 +1000,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
   --zipcache-v3-keep-compressed-after-restore \
-  --zipcache-stats-interval 10 \
+  --zipcache-stats-interval 30 \
   2>&1 | tee zipcache_v3_server.log
 ```
 
@@ -1222,7 +1222,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
   --zipcache-v3-min-restore-tokens 0 \
-  --zipcache-stats-interval 10 \
+  --zipcache-stats-interval 30 \
   2>&1 | tee zipcache_v3_server.log
 ```
 
@@ -1303,7 +1303,67 @@ python experiment/prepare_public_workloads.py \
   --output-dir experiment/workloads
 ```
 
-### 15.1 v3 推荐测试命令
+### 15.1 main 基线启动与测试
+
+严格做 main / v3 对比时，推荐在同一台云服务器、同一个模型、同一套
+`experiment/workloads/` 下分别切换分支测试。main 基线应使用 `main` 分支，并且
+启动服务时不要带任何 ZipCache 参数。
+
+切换到 main 分支：
+
+```bash
+git fetch origin
+git checkout main
+git pull origin main
+```
+
+启动 main 服务：
+
+```bash
+PYTHONPATH=python python -m minisgl \
+  --model-path /root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-0___6B \
+  --host 0.0.0.0 \
+  --port 30000 \
+  --cache-type radix \
+  --max-running-requests 16 \
+  --max-prefill-length 4096 \
+  2>&1 | tee main_server.log
+```
+
+另开一个终端执行 main 一键测试：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main \
+  --base-url http://127.0.0.1:30000 \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+只跑 main 正确性测试：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main_correctness \
+  --base-url http://127.0.0.1:30000 \
+  --only gsm8k_public_correctness,cmmlu_public_correctness,longbench_public_qa,ruler_squad_qa
+```
+
+只跑 main 长上下文与 shared-prefix 压测：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main_pressure \
+  --base-url http://127.0.0.1:30000 \
+  --only longbench_long_context_pressure,public_shared_prefix,public_shared_prefix_serial,synthetic_shared_prefix \
+  --gpu-sample-interval 0.5
+```
+
+如果只是想在 ZipCache 分支上快速验证 feature flag 关闭时行为，可以不带
+`--enable-zipcache-v3` 启动；但正式论文式对比建议仍使用真正的 `main` 分支，
+避免分支中其他实验代码影响基线。
+
+### 15.2 v3 推荐测试命令
 
 启动 v3 服务后执行：
 
@@ -1349,7 +1409,59 @@ RULER SQuAD: max_tokens=256
 如果 `report.md` 中正确性实验的 `maxed` 列不为 0，说明仍有请求达到
 `max_tokens` 上限，需要继续提高对应 workload 的生成长度。
 
-### 15.2 v3 与 main 的实验表述
+### 15.3 v3 日志对性能的影响
+
+main 版本默认只会打印 HTTP 请求日志和少量 scheduler idle 日志。v3 额外维护
+compressed pool、demote、restore 和容量统计，因此如果把每次 demote / restore 都以
+INFO 级别打印，会引入额外开销：
+
+```text
+Python 日志格式化
+stdout 写入
+tee 写入 server log 文件
+多请求高频 restore 时的日志锁竞争
+```
+
+这类事件级日志会影响 RPS、TTFT、E2E、TPOT，尤其是
+`public_shared_prefix_serial` / `synthetic_shared_prefix` 这种容易触发 repeated
+compressed hit 的 workload。
+
+当前代码已经把以下高频事件日志降为 DEBUG，默认 INFO 级别不会打印：
+
+```text
+[ZipCacheV3] demoted
+[ZipCacheV3] restored temporary
+[ZipCacheV3] restored permanent
+[ZipCacheV3] restore skipped
+```
+
+周期性 stats 仍保留 INFO 级别，用于实验后解析：
+
+```text
+[ZipCacheV3] stats: {...}
+```
+
+如果做“带 ZipCache 统计信息”的实验，建议保留较低频率 stats，例如：
+
+```bash
+--zipcache-stats-interval 30
+```
+
+如果做“纯性能极限对比”，可以关闭周期性 stats：
+
+```bash
+--zipcache-stats-interval 0
+```
+
+关闭后 `experiment/parse_zipcache_log.py` 将无法从 server log 中解析 ZipCache stats，
+因此报告里不会有 compressed pool / restore 统计。建议正式实验至少跑两轮：
+
+```text
+1. stats 打开：确认 compression ratio、compressed hits、restore success；
+2. stats 关闭：对比更干净的 serving 性能。
+```
+
+### 15.4 v3 与 main 的实验表述
 
 v3 的对比重点不是“进程总显存立刻下降”，而是：
 
