@@ -194,6 +194,7 @@ class CacheManager:
                 should_demote = bool(
                     getattr(config, "zipcache_v2_demote_on_finish", False)
                     or getattr(config, "zipcache_v3_demote_on_finish", False)
+                    or getattr(config, "zipcache_v4_demote_on_finish", False)
                 )
             if should_demote and hasattr(new_handle, "node"):
                 # v2 初版只 demote ref_count == 0 的 finished prefix 叶子节点。

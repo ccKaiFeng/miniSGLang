@@ -118,13 +118,20 @@ class Engine:
         )
 
         self.zipcache_manager = None
-        if config.enable_zipcache_v1 or config.enable_zipcache_v2 or config.enable_zipcache_v3:
+        if (
+            config.enable_zipcache_v1
+            or config.enable_zipcache_v2
+            or config.enable_zipcache_v3
+            or config.enable_zipcache_v4
+        ):
             if config.enable_zipcache_v1:
                 from minisgl.zipcache import ZipCacheV1Manager as ZipCacheManager
             elif config.enable_zipcache_v2:
                 from minisgl.zipcache import ZipCacheV2Manager as ZipCacheManager
-            else:
+            elif config.enable_zipcache_v3:
                 from minisgl.zipcache import ZipCacheV3Manager as ZipCacheManager
+            else:
+                from minisgl.zipcache import ZipCacheV4Manager as ZipCacheManager
 
             self.zipcache_manager = ZipCacheManager(
                 config=config,
@@ -153,7 +160,7 @@ class Engine:
                         config.zipcache_v_unimportant_bit,
                         config.zipcache_unimportant_ratio,
                     )
-                else:
+                elif config.enable_zipcache_v3:
                     logger.info_rank0(
                         "[ZipCacheV3] enabled: temporary GPU restore, k=%s/%s bits, "
                         "v=%s/%s bits, unimportant_ratio=%s, normal_pages=%s",
@@ -163,6 +170,20 @@ class Engine:
                         config.zipcache_v_unimportant_bit,
                         config.zipcache_unimportant_ratio,
                         self.num_pages,
+                    )
+                else:
+                    logger.info_rank0(
+                        "[ZipCacheV4] enabled: CUDA-kernel fused restore, k=%s/%s bits, "
+                        "v=%s/%s bits, unimportant_ratio=%s, normal_pages=%s, "
+                        "use_kernel_compress=%s, use_kernel_restore=%s",
+                        config.zipcache_k_important_bit,
+                        config.zipcache_k_unimportant_bit,
+                        config.zipcache_v_important_bit,
+                        config.zipcache_v_unimportant_bit,
+                        config.zipcache_unimportant_ratio,
+                        self.num_pages,
+                        config.zipcache_v4_use_kernel_compress,
+                        config.zipcache_v4_use_kernel_restore,
                     )
 
         # ======================= Attention & MoE backend initialization ========================
@@ -273,8 +294,15 @@ class Engine:
             * self.dtype.itemsize
             * config.model_config.num_layers
         )
+        v4_pages = int(getattr(config, "zipcache_v4_normal_pool_pages", 0))
         v3_pages = int(getattr(config, "zipcache_v3_normal_pool_pages", 0))
-        if getattr(config, "enable_zipcache_v3", False) and v3_pages > 0:
+        if getattr(config, "enable_zipcache_v4", False) and v4_pages > 0:
+            num_pages = v4_pages
+            logger.info_rank0(
+                "[ZipCacheV4] override normal KV pool pages: num_pages=%s",
+                num_pages,
+            )
+        elif getattr(config, "enable_zipcache_v3", False) and v3_pages > 0:
             num_pages = v3_pages
             logger.info_rank0(
                 "[ZipCacheV3] override normal KV pool pages: num_pages=%s",
@@ -391,7 +419,12 @@ def _adjust_config(config: EngineConfig):
         override("moe_backend", "fused")
         logger.info_rank0(f"Auto-selected MoE backend: {config.moe_backend}")
 
-    if config.enable_zipcache_v1 or config.enable_zipcache_v2 or config.enable_zipcache_v3:
+    if (
+        config.enable_zipcache_v1
+        or config.enable_zipcache_v2
+        or config.enable_zipcache_v3
+        or config.enable_zipcache_v4
+    ):
         override("cuda_graph_bs", [])
         override("cuda_graph_max_bs", 0)
         logger.warning_rank0("CUDA Graph is disabled for ZipCache")
