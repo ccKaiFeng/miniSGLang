@@ -502,3 +502,51 @@ python -m compileall -q python/minisgl
 6. 最后再考虑 kernel 直接读取低 bit KV。
 
 v1 的意义是先验证 ZipCache 算法在 miniSGLang runtime 中可插入、可运行、可统计，并明确后续显存优化需要改动的边界。
+
+## 12. 公开数据集测试方式
+
+当前实验测试已切换到公开数据集派生 workload，默认路径：
+
+```text
+experiment/workloads/
+```
+
+v1 建议重点跑：
+
+```text
+gsm8k_public_correctness
+cmmlu_public_correctness
+longbench_public_qa
+longbench_long_context_pressure
+public_shared_prefix
+```
+
+启动 v1 服务后执行：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v1 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v1_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+如果只验证正确性：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v1_correctness \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v1_server.log \
+  --only gsm8k_public_correctness,cmmlu_public_correctness,ruler_squad_qa
+```
+
+v1 的显存结论需要谨慎解释：v1 不释放原始 GPU KV pool，`nvidia-smi` 峰值通常不会按压缩率下降。v1 更适合观察：
+
+```text
+ZipCache 算法链路是否可运行；
+GSM8K / CMMLU / LongBench 正确性是否接近 main；
+压缩/解压带来的 TTFT、E2E、TPOT 开销；
+[ZipCacheV1] stats 中的 compression ratio。
+```

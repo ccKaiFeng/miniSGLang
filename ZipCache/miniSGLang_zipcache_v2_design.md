@@ -1872,6 +1872,14 @@ restore 失败后频繁 recompute
 
 本节说明如何在云服务器上启动原始 main 版本和 ZipCache v2 版本，并使用 `experiment/` 目录下的一键脚本做对比。
 
+注意：本节中早期示例若仍出现 `experiment/data/*.jsonl`，仅代表历史手工数据路径。当前默认测试已经切换到公开数据集派生的：
+
+```text
+experiment/workloads/
+```
+
+最新命令以本文档第 19 节和 `experiment/README.md` 为准。
+
 ### 18.1 测试前准备
 
 建议 main 和 ZipCache v2 使用完全相同的条件：
@@ -1884,7 +1892,7 @@ restore 失败后频繁 recompute
 同一个 max-running-requests
 同一个 max-prefill-length / max-extend-length
 同一个 page-size
-同一份 experiment/data 数据集
+同一份 experiment/workloads 数据集
 同一套 benchmark 参数
 ```
 
@@ -2463,3 +2471,93 @@ compressed_pool_utilization 很低
 ```
 
 通常说明 workload 没有产生足够 shared-prefix 复用，或者 demote/restore 的 Python 开销大于节省的 prefill/recompute 开销。
+
+## 19. 当前公开数据集测试入口
+
+当前 `experiment/` 测试套件已从旧的 `experiment/data/*.jsonl` 切换到公开数据集派生 workload：
+
+```text
+experiment/workloads/
+```
+
+默认一键脚本会运行：
+
+```text
+gsm8k_public_correctness
+cmmlu_public_correctness
+longbench_public_qa
+longbench_long_context_pressure
+public_shared_prefix
+public_shared_prefix_serial
+ruler_squad_qa
+synthetic_shared_prefix
+```
+
+重新生成 workload：
+
+```bash
+python experiment/prepare_public_workloads.py \
+  --root experiment \
+  --output-dir experiment/workloads
+```
+
+### 19.1 v2 推荐测试命令
+
+启动 ZipCache v2 后执行：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v2 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v2_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+如果只想观察 restore 命中：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v2_restore \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v2_server.log \
+  --only public_shared_prefix_serial,synthetic_shared_prefix \
+  --gpu-sample-interval 0.5
+```
+
+### 19.2 v2 应重点比较的指标
+
+正确性：
+
+```text
+gsm8k_public_correctness_eval.json
+cmmlu_public_correctness_eval.json
+longbench_public_qa_eval.json
+ruler_squad_qa_eval.json
+```
+
+性能：
+
+```text
+TTFT
+E2E
+TPOT
+RPS
+chunks/s
+gpu_memory_used_mb_max
+```
+
+ZipCache 内部统计：
+
+```text
+num_demotions
+num_compressed_entries
+num_compressed_hits
+num_restore_attempts
+num_restore_success
+num_restore_fallback
+compressed_pool_utilization
+active_storage_compression_ratio
+```
+
+v2 如果 `num_compressed_hits == 0`，说明 workload 只触发了 demote，没有真正复用压缩 cache。此时应优先看 `public_shared_prefix_serial` 和 `synthetic_shared_prefix`，并确认服务端日志中存在 `[ZipCacheV2] demoted` 和 `[ZipCacheV2] restored`。

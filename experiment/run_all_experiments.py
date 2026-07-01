@@ -13,61 +13,72 @@ from typing import Any, Dict, List
 
 EXPERIMENTS = [
     {
-        "name": "shared_prefix",
-        "dataset": "data/shared_prefix.jsonl",
-        "concurrency": 4,
-        "repeat": 2,
+        "name": "gsm8k_public_correctness",
+        "dataset": "workloads/gsm8k_public_correctness.jsonl",
+        "concurrency": 1,
+        "repeat": 1,
         "max_tokens": 256,
-        "description": "共享长前缀测试，主要观察长上下文、prefix cache 和 ZipCache 压缩开销。",
+        "description": "GSM8K 公开测试集数学推理正确性测试，使用标准数字答案自动计算 accuracy。",
+        "evaluate": "auto",
     },
     {
-        "name": "realistic_long_context",
-        "dataset": "data/realistic_long_context.jsonl",
+        "name": "cmmlu_public_correctness",
+        "dataset": "workloads/cmmlu_public_correctness.jsonl",
+        "concurrency": 1,
+        "repeat": 1,
+        "max_tokens": 32,
+        "description": "CMMLU 公开中文多学科选择题正确性测试，自动抽取 A/B/C/D 选项并计算 accuracy。",
+        "evaluate": "auto",
+    },
+    {
+        "name": "longbench_public_qa",
+        "dataset": "workloads/longbench_public_qa.jsonl",
+        "concurrency": 4,
+        "repeat": 1,
+        "max_tokens": 192,
+        "description": "LongBench 公开长上下文问答任务，用于同时观察长输入性能和近似 answer contains 正确性。",
+        "evaluate": "auto",
+    },
+    {
+        "name": "longbench_long_context_pressure",
+        "dataset": "workloads/longbench_long_context_pressure.jsonl",
         "concurrency": 8,
-        "repeat": 3,
-        "max_tokens": 512,
-        "description": "真实长上下文压力测试：较多长 prompt、高并发、较长输出，用于观察 KV cache 显存压力和端到端性能。",
-    },
-    {
-        "name": "zipcache_restore_probe",
-        "dataset": "data/zipcache_restore_probe.jsonl",
-        "concurrency": 1,
-        "repeat": 8,
+        "repeat": 1,
         "max_tokens": 256,
-        "description": "ZipCache v2 强命中测试：顺序重复同一个长 prompt，专门观察 compressed hit 和 restore 是否触发。",
+        "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
     },
     {
-        "name": "zipcache_restore_pressure",
-        "dataset": "data/zipcache_restore_pressure.jsonl",
-        "concurrency": 1,
-        "repeat": 6,
-        "max_tokens": 384,
-        "description": "ZipCache v2 restore 压力测试：多个共享超长前缀请求顺序重复，增加 compressed hit/restore 触发概率。",
-    },
-    {
-        "name": "mixed_length",
-        "dataset": "data/mixed_length.jsonl",
+        "name": "public_shared_prefix",
+        "dataset": "workloads/public_shared_prefix.jsonl",
         "concurrency": 4,
         "repeat": 2,
-        "max_tokens": 256,
-        "description": "混合长度测试，模拟普通在线服务负载。",
+        "max_tokens": 160,
+        "description": "由 LongBench 公开长上下文派生的共享前缀 workload，用于观察 radix/prefix cache 与 ZipCache restore 命中。",
     },
     {
-        "name": "correctness",
-        "dataset": "data/correctness.jsonl",
+        "name": "public_shared_prefix_serial",
+        "dataset": "workloads/public_shared_prefix.jsonl",
         "concurrency": 1,
+        "repeat": 3,
+        "max_tokens": 128,
+        "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+    },
+    {
+        "name": "ruler_squad_qa",
+        "dataset": "workloads/ruler_squad_qa.jsonl",
+        "concurrency": 2,
         "repeat": 1,
         "max_tokens": 96,
-        "description": "正确性冒烟测试，低并发 greedy 输出，便于人工对比 main/ZipCache 输出。",
+        "description": "RULER helper 下载得到的 SQuAD 问答数据，用于长上下文检索类正确性近似评估。",
+        "evaluate": "auto",
     },
     {
-        "name": "gsm8k_correctness",
-        "dataset": "data/gsm8k_correctness.jsonl",
-        "concurrency": 1,
+        "name": "synthetic_shared_prefix",
+        "dataset": "workloads/synthetic_shared_prefix.jsonl",
+        "concurrency": 8,
         "repeat": 1,
         "max_tokens": 256,
-        "description": "GSM8K 数学题正确性测试，使用标准数字答案自动计算 accuracy。",
-        "evaluate": "gsm8k",
+        "description": "本地生成的 generated-shared-prefix 压测负载，保留用于强 prefix cache 压力测试。",
     },
 ]
 
@@ -128,6 +139,18 @@ def run_command(cmd: List[str], log_path: Path) -> int:
         proc.wait()
         log.write(f"\n[exit_code] {proc.returncode}\n")
         return int(proc.returncode)
+
+
+def select_experiments(only: str | None) -> List[Dict[str, Any]]:
+    if only is None or not only.strip():
+        return EXPERIMENTS
+    wanted = {name.strip() for name in only.split(",") if name.strip()}
+    selected = [exp for exp in EXPERIMENTS if exp["name"] in wanted]
+    missing = sorted(wanted - {exp["name"] for exp in selected})
+    if missing:
+        names = ", ".join(exp["name"] for exp in EXPERIMENTS)
+        raise SystemExit(f"Unknown experiment(s): {missing}. Available: {names}")
+    return selected
 
 
 def summarize_for_report(summary: Dict[str, Any]) -> Dict[str, Any]:
@@ -268,10 +291,22 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--server-log", type=Path, default=None, help="Optional ZipCache server log.")
     parser.add_argument("--skip-server-check", action="store_true")
+    parser.add_argument(
+        "--only",
+        default=None,
+        help="Comma-separated experiment names to run. Default: run all public workloads.",
+    )
+    parser.add_argument("--list-experiments", action="store_true")
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
     exp_root = Path(__file__).resolve().parent
+    experiments = select_experiments(args.only)
+    if args.list_experiments:
+        for exp in experiments:
+            print(f"{exp['name']}: {exp['description']}")
+        return
+
     run_dir = args.log_root / f"{now_stamp()}_{args.mode}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -293,14 +328,20 @@ def main() -> None:
         "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "run_dir": str(run_dir),
         "server_check": server_check,
-        "experiments": EXPERIMENTS,
+        "experiments": experiments,
     }
     manifest.update(get_git_info(repo_root))
     write_json(run_dir / "manifest.json", manifest)
 
     all_results: List[Dict[str, Any]] = []
-    for exp in EXPERIMENTS:
+    for exp in experiments:
         name = exp["name"]
+        dataset_path = exp_root / exp["dataset"]
+        if not dataset_path.exists():
+            raise SystemExit(
+                f"Dataset for experiment {name} does not exist: {dataset_path}. "
+                f"Run: python experiment/prepare_public_workloads.py"
+            )
         result_file = run_dir / f"{name}.jsonl"
         summary_file = run_dir / f"{name}_summary.json"
         log_file = run_dir / f"{name}.log"
@@ -310,7 +351,7 @@ def main() -> None:
             "--base-url",
             args.base_url,
             "--dataset",
-            str(exp_root / exp["dataset"]),
+            str(dataset_path),
             "--output",
             str(result_file),
             "--summary",
@@ -342,7 +383,7 @@ def main() -> None:
             "summary": summary,
             "compact_summary": summarize_for_report(summary),
         }
-        if exp.get("evaluate") == "gsm8k":
+        if exp.get("evaluate") == "auto":
             eval_file = run_dir / f"{name}_eval.json"
             eval_cmd = [
                 sys.executable,

@@ -11,6 +11,9 @@ __pycache__/
 *.json
 *.jsonl
 !experiment/data/*.jsonl
+!experiment/workloads/
+!experiment/workloads/*.json
+!experiment/workloads/*.jsonl
 
 # profiling data
 *.nsys-rep
@@ -30,6 +33,7 @@ experiment/ruler/NVIDIA_RULER/
 !experiment/longbench/**
 !experiment/synthetic/**
 !experiment/ruler/squad.json
+!experiment/workloads/**
 
 # binaries
 build/

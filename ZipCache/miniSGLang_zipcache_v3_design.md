@@ -1276,3 +1276,87 @@ estimated_capacity_gain_vs_normal_pool
 因此应重点比较 effective KV capacity、compressed hits、restore success、
 可承载的 shared-prefix 数量、长上下文压力测试是否更不容易触发 normal pool 不足。
 ```
+
+## 15. 当前公开数据集测试入口
+
+当前实验测试默认使用公开数据集派生 workload：
+
+```text
+experiment/workloads/
+```
+
+这些 workload 由以下公开数据构造：
+
+```text
+GSM8K
+CMMLU
+LongBench
+RULER SQuAD helper data
+generated-shared-prefix synthetic load
+```
+
+重新生成命令：
+
+```bash
+python experiment/prepare_public_workloads.py \
+  --root experiment \
+  --output-dir experiment/workloads
+```
+
+### 15.1 v3 推荐测试命令
+
+启动 v3 服务后执行：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+只跑长上下文与 shared-prefix 压测：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3_pressure \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --only longbench_long_context_pressure,public_shared_prefix,public_shared_prefix_serial,synthetic_shared_prefix \
+  --gpu-sample-interval 0.5
+```
+
+只跑正确性：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3_correctness \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --only gsm8k_public_correctness,cmmlu_public_correctness,longbench_public_qa,ruler_squad_qa
+```
+
+### 15.2 v3 与 main 的实验表述
+
+v3 的对比重点不是“进程总显存立刻下降”，而是：
+
+```text
+相同或更低 KV cache 预算下，compressed pool 能保存更多历史 KV；
+public_shared_prefix / synthetic_shared_prefix 能产生更多 compressed hit；
+longbench_long_context_pressure 下 normal pool 不足和 OOM 风险降低；
+GSM8K / CMMLU / LongBench / RULER 正确性接近 main。
+```
+
+推荐报告中同时列出：
+
+```text
+main report.md
+zipcache_v3 report.md
+zipcache_v3_server.log 中的 [ZipCacheV3] stats
+compressed_pool_utilization
+estimated_effective_kv_capacity_bytes
+estimated_capacity_gain_vs_normal_pool
+num_compressed_hits
+num_restore_success
+```
