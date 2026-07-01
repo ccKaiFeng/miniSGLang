@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "passage_count",
+  "split": "test"
+}

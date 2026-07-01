@@ -11,10 +11,29 @@ __pycache__/
 *.json
 *.jsonl
 !experiment/data/*.jsonl
+!experiment/workloads/
+!experiment/workloads/*.json
+!experiment/workloads/*.jsonl
 
 # profiling data
 *.nsys-rep
 *.ncu-rep
+
+# evaluation datasets and generated benchmark payloads
+datasets/
+data/
+*.arrow
+*.parquet
+experiment/__pycache__/
+experiment/logs/
+experiment/results/
+experiment/ruler/NVIDIA_RULER/
+!experiment/gsm8k/**
+!experiment/cmmlu/**
+!experiment/longbench/**
+!experiment/synthetic/**
+!experiment/ruler/squad.json
+!experiment/workloads/**
 
 # binaries
 build/

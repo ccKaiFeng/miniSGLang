@@ -1,0 +1,18 @@
+{
+  "workload_dir": "/Users/fk/Desktop/all_for_run/miniSGLang/mini-sglang/experiment/workloads",
+  "source_root": "/Users/fk/Desktop/all_for_run/miniSGLang/mini-sglang/experiment",
+  "counts": {
+    "gsm8k_public_correctness": 128,
+    "cmmlu_public_correctness": 256,
+    "longbench_public_qa": 154,
+    "longbench_long_context_pressure": 126,
+    "public_shared_prefix": 192,
+    "ruler_squad_qa": 128,
+    "synthetic_shared_prefix": 256
+  },
+  "notes": [
+    "These JSONL files are derived from the downloaded public datasets under experiment/.",
+    "run_all_experiments.py uses these files by default.",
+    "experiment/data is kept for historical handcrafted tests but is not used by default."
+  ]
+}

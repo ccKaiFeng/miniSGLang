@@ -14,6 +14,10 @@ ANSWER_PATTERNS = [
     re.compile(r"最终答案[：:]\s*(-?\d+(?:,\d{3})*(?:\.\d+)?)"),
 ]
 NUMBER_RE = re.compile(r"-?\d+(?:,\d{3})*(?:\.\d+)?")
+CHOICE_PATTERNS = [
+    re.compile(r"(?:答案|最终答案|选项|answer)\s*[：:是is]*\s*([ABCD])", re.IGNORECASE),
+    re.compile(r"\b([ABCD])\b", re.IGNORECASE),
+]
 
 
 def load_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -37,7 +41,14 @@ def normalize_number(value: Any) -> str:
     return text
 
 
-def extract_answer(text: str) -> str | None:
+def normalize_text(value: Any) -> str:
+    text = str(value).strip().lower()
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"[^\w\u4e00-\u9fff.%-]+", " ", text)
+    return text.strip()
+
+
+def extract_number_answer(text: str) -> str | None:
     for pattern in ANSWER_PATTERNS:
         matches = pattern.findall(text)
         if matches:
@@ -48,12 +59,36 @@ def extract_answer(text: str) -> str | None:
     return normalize_number(numbers[-1])
 
 
+def extract_choice_answer(text: str) -> str | None:
+    for pattern in CHOICE_PATTERNS:
+        matches = pattern.findall(text)
+        if matches:
+            return str(matches[-1]).upper()
+    return None
+
+
+def extract_answer(text: str, answer_type: str) -> str | None:
+    if answer_type == "choice":
+        return extract_choice_answer(text)
+    if answer_type == "number":
+        return extract_number_answer(text)
+    return normalize_text(text)
+
+
+def is_text_contains_correct(output_text: str, answers: List[str]) -> bool:
+    output = normalize_text(output_text)
+    if not output:
+        return False
+    for answer in answers:
+        expected = normalize_text(answer)
+        if expected and (expected in output or output in expected):
+            return True
+    return False
+
+
 def evaluate(dataset: Path, results: Path) -> Dict[str, Any]:
-    expected = {
-        str(row["id"]): normalize_number(row["answer"])
-        for row in load_jsonl(dataset)
-        if "answer" in row
-    }
+    dataset_rows = load_jsonl(dataset)
+    expected = {str(row["id"]): row for row in dataset_rows}
     rows = load_jsonl(results)
     details = []
     correct = 0
@@ -61,11 +96,27 @@ def evaluate(dataset: Path, results: Path) -> Dict[str, Any]:
     for row in rows:
         req_id = str(row.get("id", ""))
         key = base_id(req_id)
-        answer = expected.get(key)
+        source = expected.get(key)
         output_text = str(row.get("output_text", ""))
-        prediction = extract_answer(output_text)
-        is_correct = row.get("ok") is True and answer is not None and prediction == answer
-        if answer is not None:
+        answer_type = str((source or {}).get("answer_type") or "number")
+        expected_answer: Any = None
+        prediction: str | None = None
+        is_correct = False
+        if source is not None and row.get("ok") is True:
+            if answer_type == "text_contains":
+                answers = [str(x) for x in source.get("answers", [])]
+                expected_answer = answers
+                prediction = normalize_text(output_text[:1000])
+                is_correct = is_text_contains_correct(output_text, answers)
+            elif answer_type == "choice":
+                expected_answer = str(source.get("answer", "")).strip().upper()
+                prediction = extract_answer(output_text, answer_type)
+                is_correct = prediction == expected_answer
+            else:
+                expected_answer = normalize_number(source.get("answer", ""))
+                prediction = extract_answer(output_text, "number")
+                is_correct = prediction == expected_answer
+        if source is not None:
             judged += 1
             correct += int(is_correct)
         details.append(
@@ -73,7 +124,8 @@ def evaluate(dataset: Path, results: Path) -> Dict[str, Any]:
                 "id": req_id,
                 "base_id": key,
                 "ok": bool(row.get("ok")),
-                "expected": answer,
+                "answer_type": answer_type,
+                "expected": expected_answer,
                 "prediction": prediction,
                 "correct": is_correct,
                 "output_preview": output_text[:300],

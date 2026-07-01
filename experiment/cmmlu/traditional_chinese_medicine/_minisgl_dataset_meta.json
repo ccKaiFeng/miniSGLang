@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "traditional_chinese_medicine",
+  "splits": "all"
+}

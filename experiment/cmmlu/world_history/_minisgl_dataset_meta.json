@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "world_history",
+  "splits": "all"
+}

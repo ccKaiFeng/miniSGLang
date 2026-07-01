@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "professional_law",
+  "splits": "all"
+}

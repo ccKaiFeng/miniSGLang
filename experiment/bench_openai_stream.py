@@ -28,6 +28,8 @@ def load_dataset(path: Path, repeat: int, max_tokens_override: int | None) -> Li
             item["id"] = f"{row.get('id', 'req')}_r{r}"
             if max_tokens_override is not None:
                 item["max_tokens"] = max_tokens_override
+            elif "max_tokens" not in item and "output_len" in item:
+                item["max_tokens"] = int(item["output_len"])
             expanded.append(item)
     return expanded
 

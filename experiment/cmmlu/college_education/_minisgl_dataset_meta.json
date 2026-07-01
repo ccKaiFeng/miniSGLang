@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "college_education",
+  "splits": "all"
+}

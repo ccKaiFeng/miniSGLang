@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "clinical_knowledge",
+  "splits": "all"
+}

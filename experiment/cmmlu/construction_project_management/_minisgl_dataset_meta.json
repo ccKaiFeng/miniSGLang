@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "construction_project_management",
+  "splits": "all"
+}
