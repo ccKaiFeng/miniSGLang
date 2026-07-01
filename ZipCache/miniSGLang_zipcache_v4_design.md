@@ -424,9 +424,9 @@ ZipCache v4:
 
 3. v4 kernel behavior:
    num_kernel_restore_calls
+   num_kernel_restore_fallback
    kernel_restore_tokens
    kernel_restore_elements
-   kernel_restore_time_ms
 
 4. serving performance:
    TTFT
@@ -449,3 +449,224 @@ ZipCache v4:
 3. compressed hit 较多时，v4 的 TTFT/E2E 应优于 v3；
 4. 如果没有 compressed hit，v4 和 v3 差异不明显。
 ```
+
+## 12. 当前公开数据集测试入口
+
+当前一键测试脚本默认使用公开数据集派生 workload：
+
+```text
+experiment/workloads/
+```
+
+这些 workload 由以下数据构造：
+
+```text
+GSM8K
+CMMLU
+LongBench
+RULER SQuAD helper data
+generated-shared-prefix synthetic load
+```
+
+正常测试时不需要重新生成数据，直接使用仓库中已经提交的
+`experiment/workloads/*.jsonl`。如果本地数据被删除或需要重新生成，可以执行：
+
+```bash
+python experiment/prepare_public_workloads.py \
+  --root experiment \
+  --output-dir experiment/workloads
+```
+
+### 12.1 v4 完整一键测试
+
+先启动 v4 服务：
+
+```bash
+PYTHONPATH=python python -m minisgl \
+  --model-path /path/to/model \
+  --host 0.0.0.0 \
+  --port 30001 \
+  --cache-type radix \
+  --max-running-requests 16 \
+  --max-prefill-length 4096 \
+  --enable-zipcache-v4 \
+  --zipcache-v4-normal-pool-pages 32768 \
+  --zipcache-v4-compressed-pool-mb 40960 \
+  --zipcache-v4-use-kernel-compress \
+  --zipcache-v4-use-kernel-restore \
+  --zipcache-unimportant-ratio 0.4 \
+  --zipcache-k-important-bit 4 \
+  --zipcache-k-unimportant-bit 2 \
+  --zipcache-v-important-bit 4 \
+  --zipcache-v-unimportant-bit 2 \
+  --zipcache-stats-interval 10 \
+  2>&1 | tee zipcache_v4_server.log
+```
+
+另开一个终端执行：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+测试结果会保存到：
+
+```text
+experiment/logs/<时间>_zipcache_v4/
+```
+
+其中 `report.md` 汇总每个 workload 的吞吐、延迟、显存和 ZipCache 统计。
+
+### 12.2 只跑长上下文与 shared-prefix 压测
+
+该测试主要用于观察 v4 是否能在 shared-prefix / long-context 场景下产生
+compressed hit，并验证 CUDA restore kernel 是否降低 v3 中 PyTorch restore 带来的开销。
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_pressure \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --only longbench_long_context_pressure,public_shared_prefix,public_shared_prefix_serial,synthetic_shared_prefix \
+  --gpu-sample-interval 0.5
+```
+
+重点观察：
+
+```text
+num_compressed_hits
+num_restore_attempts
+num_restore_success
+num_kernel_restore_calls
+num_kernel_restore_fallback
+kernel_restore_tokens
+kernel_restore_elements
+compressed_pool_utilization
+estimated_capacity_gain_vs_normal_pool
+TTFT / E2E / TPOT
+```
+
+### 12.3 只跑正确性测试
+
+该测试用于确认 v4 的压缩 / 解压没有明显破坏生成结果。
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_correctness \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --only gsm8k_public_correctness,cmmlu_public_correctness,longbench_public_qa,ruler_squad_qa
+```
+
+正确性结果在对应日志目录下的：
+
+```text
+gsm8k_public_correctness_eval.json
+cmmlu_public_correctness_eval.json
+longbench_public_qa_eval.json
+ruler_squad_qa_eval.json
+```
+
+### 12.4 main / v3 / v4 对比方式
+
+建议在同一台机器、同一个模型、同一套 workload 下分别测试三组：
+
+```text
+main:
+  不带 ZipCache 参数，作为原始 miniSGLang 基线。
+
+v3:
+  --enable-zipcache-v3，压缩 / 解压主要走 PyTorch 路径。
+
+v4:
+  --enable-zipcache-v4，压缩 / 解压优先走专用 CUDA kernel。
+```
+
+main 一键测试：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main \
+  --base-url http://127.0.0.1:30000 \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+v3 一键测试：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+v4 一键测试：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+对比时不要只看 `nvidia-smi` 的进程总显存。v3/v4 会把显存从 normal KV pool
+重新分配到 compressed pool，因此更重要的是比较：
+
+```text
+1. 相同显存预算下能缓存多少历史 KV：
+   estimated_effective_kv_capacity_bytes
+   estimated_capacity_gain_vs_normal_pool
+   compressed_pool_utilization
+
+2. compressed cache 是否真的被命中和恢复：
+   num_compressed_hits
+   num_restore_attempts
+   num_restore_success
+   num_restore_fallback
+
+3. v4 是否比 v3 降低 restore 开销：
+   num_kernel_restore_calls
+   num_kernel_restore_fallback
+   kernel_restore_tokens
+   kernel_restore_elements
+   TTFT
+   E2E
+   TPOT
+
+4. 正确性是否接近 main：
+   GSM8K accuracy
+   CMMLU accuracy
+   LongBench / RULER text_contains accuracy
+```
+
+### 12.5 解析 ZipCacheV4 日志
+
+服务运行后可以单独解析 v4 stats：
+
+```bash
+python experiment/parse_zipcache_log.py \
+  --log zipcache_v4_server.log
+```
+
+如果输出中 `num_stats` 为 0，说明服务日志里没有 `[ZipCacheV4] stats`。此时优先检查：
+
+```text
+1. 服务是否真的带了 --enable-zipcache-v4；
+2. --zipcache-stats-interval 是否过大；
+3. 测试是否运行时间太短，尚未触发周期性 stats；
+4. server log 路径是否传错。
+```
+
+如果 `num_compressed_hits` 长期为 0，说明测试负载没有命中 compressed radix entry。
+应优先跑 `public_shared_prefix_serial` 或 `synthetic_shared_prefix`，并确认请求结束后
+v4 demote 路径有 `[ZipCacheV4] demoted` 日志。
