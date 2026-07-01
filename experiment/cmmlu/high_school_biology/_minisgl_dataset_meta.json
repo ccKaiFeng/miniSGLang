@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "high_school_biology",
+  "splits": "all"
+}

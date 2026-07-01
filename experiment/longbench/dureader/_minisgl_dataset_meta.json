@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "dureader",
+  "split": "test"
+}

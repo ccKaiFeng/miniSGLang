@@ -1,0 +1,5 @@
+{
+  "repo": "openai/gsm8k",
+  "config": "main",
+  "splits": "all"
+}

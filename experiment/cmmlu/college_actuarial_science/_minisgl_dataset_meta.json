@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "college_actuarial_science",
+  "splits": "all"
+}

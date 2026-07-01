@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "gov_report_e",
+  "split": "test"
+}

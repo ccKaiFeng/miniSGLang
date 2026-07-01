@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "multi_news_e",
+  "split": "test"
+}

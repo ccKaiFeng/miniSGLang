@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "repobench-p_e",
+  "split": "test"
+}

@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "2wikimqa_e",
+  "split": "test"
+}

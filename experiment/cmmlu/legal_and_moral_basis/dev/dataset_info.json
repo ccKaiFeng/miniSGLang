@@ -1,0 +1,64 @@
+{
+  "builder_name": "cmmlu",
+  "citation": "@misc{li2023cmmlu,\n      title={CMMLU: Measuring massive multitask language understanding in Chinese},\n      author={Haonan Li and Yixuan Zhang and Fajri Koto and Yifei Yang and Hai Zhao and Yeyun Gong and Nan Duan and Timothy Baldwin},\n      year={2023},\n      eprint={2306.09212},\n      archivePrefix={arXiv},\n      primaryClass={cs.CL}\n}\n",
+  "config_name": "legal_and_moral_basis",
+  "dataset_name": "cmmlu",
+  "dataset_size": 57181,
+  "description": "CMMLU is a comprehensive Chinese assessment suite specifically designed to evaluate the advanced knowledge and reasoning abilities of LLMs within the Chinese language and cultural context.\n",
+  "download_checksums": {
+    "https://huggingface.co/datasets/haonan-li/cmmlu/resolve/main/cmmlu_v1_0_1.zip": {
+      "num_bytes": 1078656,
+      "checksum": null
+    }
+  },
+  "download_size": 1078656,
+  "features": {
+    "Question": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "A": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "B": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "C": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "D": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "Answer": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "https://github.com/haonan-li/CMMLU",
+  "license": "",
+  "size_in_bytes": 1135837,
+  "splits": {
+    "test": {
+      "name": "test",
+      "num_bytes": 56449,
+      "num_examples": 214,
+      "dataset_name": "cmmlu"
+    },
+    "dev": {
+      "name": "dev",
+      "num_bytes": 732,
+      "num_examples": 5,
+      "dataset_name": "cmmlu"
+    }
+  },
+  "version": {
+    "version_str": "1.0.1",
+    "major": 1,
+    "minor": 0,
+    "patch": 1
+  }
+}

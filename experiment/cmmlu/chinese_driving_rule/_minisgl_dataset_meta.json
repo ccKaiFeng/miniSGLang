@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "chinese_driving_rule",
+  "splits": "all"
+}

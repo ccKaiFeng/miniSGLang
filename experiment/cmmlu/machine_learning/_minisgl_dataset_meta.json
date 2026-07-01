@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "machine_learning",
+  "splits": "all"
+}

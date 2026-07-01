@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "chinese_literature",
+  "splits": "all"
+}

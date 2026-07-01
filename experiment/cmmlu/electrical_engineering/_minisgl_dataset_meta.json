@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "electrical_engineering",
+  "splits": "all"
+}

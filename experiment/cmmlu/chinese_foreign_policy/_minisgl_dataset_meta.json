@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "chinese_foreign_policy",
+  "splits": "all"
+}

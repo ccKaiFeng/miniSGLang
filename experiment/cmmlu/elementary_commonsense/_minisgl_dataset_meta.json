@@ -1,0 +1,5 @@
+{
+  "repo": "haonan-li/cmmlu",
+  "config": "elementary_commonsense",
+  "splits": "all"
+}

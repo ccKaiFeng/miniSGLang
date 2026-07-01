@@ -1,0 +1,5 @@
+{
+  "repo": "THUDM/LongBench",
+  "config": "hotpotqa_e",
+  "split": "test"
+}
