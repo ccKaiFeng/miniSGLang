@@ -1,238 +1,95 @@
-# miniSGLang 评测数据集准备说明
+# miniSGLang 评测数据集说明
 
-本文档说明如何为 miniSGLang KV cache 压缩实验准备准确性测试数据和性能测试负载。
+本文档说明当前仓库中 `experiment/` 目录下已经准备好的评测数据集和合成负载。数据下载脚本已经删除；云服务器只需要拉取当前分支即可获得这些数据。
 
-默认保存目录是当前项目目录下的：
+默认数据目录：
 
 ```text
 ./experiment
 ```
 
-也可以通过 `--root` 指定其他目录，例如：
+## 已包含的数据
 
-```bash
-python scripts/download_eval_datasets.py --root /root/autodl-tmp/datasets/minisgl_eval
-```
-
-## 数据集用途
-
-| 数据集 / 负载 | 默认保存位置 | 主要用途 |
+| 数据集 / 负载 | 保存位置 | 主要用途 |
 | --- | --- | --- |
 | GSM8K | `experiment/gsm8k/main` | 数学推理准确性测试 |
 | CMMLU | `experiment/cmmlu/<subject_name>` | 中文多学科选择题准确性测试 |
-| LongBench | `experiment/longbench/<task_name>` | 长上下文真实任务准确性和长输入性能测试 |
-| RULER | `experiment/ruler/NVIDIA_RULER` | 长上下文合成检索、多跳、聚合任务 |
+| LongBench | `experiment/longbench/<task_name>` | 长上下文真实任务准确性和性能测试 |
+| RULER SQuAD 数据 | `experiment/ruler/squad.json` | 长上下文问答 / 检索类测试数据 |
 | generated-shared-prefix | `experiment/synthetic/generated_shared_prefix.jsonl` | 共享长 prefix 的服务性能负载，用于观察 prefix/radix cache 和 compressed KV 命中 |
 | random token ids | `experiment/synthetic/random_token_ids.jsonl` | 纯性能压测负载，不用于准确率 |
 
-准确性测试重点使用：
+## 云服务器同步方式
+
+在云服务器仓库目录中执行：
+
+```bash
+git fetch origin
+git checkout ZipCache
+git pull origin ZipCache
+```
+
+拉取完成后，数据应位于：
+
+```text
+experiment/gsm8k/
+experiment/cmmlu/
+experiment/longbench/
+experiment/ruler/
+experiment/synthetic/
+```
+
+## 准确性测试数据
+
+建议优先使用：
 
 ```text
 GSM8K
 CMMLU
 LongBench
-RULER
+RULER SQuAD
 ```
 
-性能测试重点使用：
+这些数据用于比较原始 miniSGLang 与 ZipCache 版本在压缩 KV cache 后的回答正确性是否发生明显变化。
+
+## 性能测试数据
+
+建议优先使用：
 
 ```text
-generated_shared_prefix.jsonl
-random_token_ids.jsonl
+experiment/synthetic/generated_shared_prefix.jsonl
+experiment/synthetic/random_token_ids.jsonl
 LongBench 长输入任务
-RULER 不同上下文长度任务
 ```
 
-## 一键准备
+其中：
 
-安装依赖并下载/生成数据：
+- `generated_shared_prefix.jsonl`：同组请求共享很长的前缀，适合观察 radix cache / prefix cache / compressed KV cache 的复用效果。
+- `random_token_ids.jsonl`：绕开自然语言语义，主要用于压力测试吞吐、TTFT、TPOT、E2E、GPU 显存占用。
+- LongBench：更接近真实长上下文任务，适合同时观察正确性和长输入性能。
 
-```bash
-bash scripts/setup_eval_datasets.sh ./experiment
-```
+## RULER 说明
 
-这个脚本会先安装：
+RULER 原始仓库是一个独立 Git 仓库，当前没有把 `experiment/ruler/NVIDIA_RULER/` 作为外层仓库内容提交，避免形成嵌套 Git 仓库或误提交 RULER 源码。
+
+当前外层仓库只提交了已经下载成功且可直接使用的数据文件：
 
 ```text
-datasets
-huggingface_hub
-pandas
-pyarrow
-tqdm
+experiment/ruler/squad.json
 ```
 
-然后调用：
-
-```bash
-python scripts/download_eval_datasets.py --root ./experiment
-```
-
-如果没有传 root 参数，默认也是 `./experiment`：
-
-```bash
-bash scripts/setup_eval_datasets.sh
-```
-
-## 直接运行 Python 脚本
-
-只下载少量 CMMLU / LongBench config，跳过 RULER，适合先验证脚本：
-
-```bash
-python scripts/download_eval_datasets.py \
-  --root ./experiment \
-  --cmmlu-max-configs 3 \
-  --longbench-max-configs 3 \
-  --skip-ruler
-```
-
-只生成 synthetic 负载，不下载 Hugging Face 数据集，也不 clone RULER：
-
-```bash
-python scripts/download_eval_datasets.py \
-  --root ./experiment \
-  --skip-hf \
-  --skip-ruler
-```
-
-如果不传 `--root`，脚本会使用当前执行目录下的 `experiment/`：
-
-```bash
-python scripts/download_eval_datasets.py \
-  --cmmlu-max-configs 3 \
-  --longbench-max-configs 3 \
-  --skip-ruler
-```
-
-## Hugging Face 镜像
-
-国内或云服务器访问 Hugging Face 较慢时，可以设置 `HF_ENDPOINT`：
-
-```bash
-HF_ENDPOINT=https://hf-mirror.com \
-python scripts/download_eval_datasets.py \
-  --root ./experiment \
-  --cmmlu-max-configs 3 \
-  --longbench-max-configs 3 \
-  --skip-ruler
-```
-
-`setup_eval_datasets.sh` 也会继承当前环境变量：
-
-```bash
-HF_ENDPOINT=https://hf-mirror.com bash scripts/setup_eval_datasets.sh ./experiment
-```
-
-## 可跳过项
-
-脚本支持按数据集跳过：
-
-```text
---skip-hf          跳过所有 Hugging Face 数据集
---skip-gsm8k       跳过 GSM8K
---skip-cmmlu       跳过 CMMLU
---skip-longbench   跳过 LongBench
---skip-ruler       跳过 RULER clone 和数据脚本
---skip-synthetic   跳过 synthetic 负载生成
-```
-
-CMMLU / LongBench 支持快速调试参数：
-
-```text
---cmmlu-max-configs 3
---longbench-max-configs 3
---no-longbench-e
-```
-
-## Synthetic 负载参数
-
-`generated_shared_prefix.jsonl` 默认参数：
-
-```text
---gsp-groups 64
---gsp-prompts-per-group 16
---gsp-prefix-len-words 2048
---gsp-question-len-words 128
---gsp-output-len 256
-```
-
-每一行格式：
-
-```json
-{
-  "id": 0,
-  "group_id": 0,
-  "prompt": "...",
-  "input_len_words_approx": 2300,
-  "output_len": 256
-}
-```
-
-同一个 `group_id` 内的 prompt 共享长 prefix，适合测试：
-
-```text
-prefix cache
-radix cache
-compressed KV cache hit
-TTFT / E2E / TPOT
-```
-
-`random_token_ids.jsonl` 默认参数：
-
-```text
---random-num-prompts 1024
---random-min-input-len 100
---random-max-input-len 1024
---random-min-output-len 100
---random-max-output-len 1024
---random-vocab-size 10000
-```
-
-每一行格式：
-
-```json
-{
-  "id": 0,
-  "prompt_token_ids": [123, 456, 789],
-  "input_len": 512,
-  "output_len": 256
-}
-```
-
-这个文件主要用于性能压测，不用于判断模型回答正确性。
-
-## RULER 注意事项
-
-RULER 来自 NVIDIA 的长上下文评测仓库：
-
-```text
-https://github.com/NVIDIA/RULER.git
-```
-
-脚本会 clone 到：
-
-```text
-experiment/ruler/NVIDIA_RULER
-```
-
-clone 后会尝试运行当前已知的数据准备脚本：
-
-```text
-scripts/data/synthetic/json/download_paulgraham_essay.py
-scripts/data/synthetic/json/download_qa_dataset.sh
-```
-
-如果 RULER 仓库结构变化，脚本只会打印 warning，不会因为找不到这些 helper 脚本而直接崩溃。此时需要手动查看 RULER 仓库 README。
+如果后续需要完整 RULER benchmark，应在云服务器上单独 clone NVIDIA/RULER，并按照其 README 生成更多长上下文任务数据。
 
 ## Git 注意事项
 
-下载的数据集和生成的负载不应提交到 Git。仓库 `.gitignore` 已忽略常见数据目录和大文件格式：
+本次为了方便云服务器直接 `git pull` 复现实验，`experiment/` 下的评测数据已经被提交到当前分支。
+
+`.gitignore` 仍然会忽略以下内容，避免把运行日志、实验输出、嵌套 RULER 仓库继续提交进去：
 
 ```text
-experiment/
+experiment/logs/
+experiment/results/
+experiment/ruler/NVIDIA_RULER/
 datasets/
 data/
-*.arrow
-*.parquet
 ```
-
-已有被 Git 跟踪的实验脚本不会因为 `.gitignore` 自动消失；`.gitignore` 只影响新的未跟踪文件。
