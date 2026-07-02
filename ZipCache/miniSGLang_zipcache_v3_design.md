@@ -1222,7 +1222,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
   --zipcache-v3-min-restore-tokens 0 \
-  --zipcache-stats-interval 30 \
+  --zipcache-stats-interval 0 \
   2>&1 | tee zipcache_v3_server.log
 ```
 
@@ -1388,6 +1388,37 @@ python experiment/run_all_experiments.py \
   --gpu-sample-interval 0.5
 ```
 
+如果 v3 速度较慢，优先使用轻量测试。该 preset 只跑 3 个实验：
+
+```text
+1. gsm8k_public_correctness：正确性；
+2. longbench_long_context_pressure：长上下文显存占用；
+3. public_shared_prefix_serial：前缀复用 / compressed hit。
+```
+
+推荐命令：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3_quick \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --preset quick \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+如果仍然太慢，可以进一步限制每个 workload 的输入条数：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3_quick_16 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --preset quick \
+  --max-samples 16
+```
+
 只跑正确性：
 
 ```bash
@@ -1401,10 +1432,10 @@ python experiment/run_all_experiments.py \
 正确性 workload 会自动关闭 `ignore_eos` 并提高生成上限：
 
 ```text
-GSM8K: max_tokens=1024
-CMMLU: max_tokens=128
-LongBench QA: max_tokens=512
-RULER SQuAD: max_tokens=256
+GSM8K: max_tokens=2048
+CMMLU: max_tokens=256
+LongBench QA: max_tokens=768
+RULER SQuAD: max_tokens=512
 ```
 
 如果 `report.md` 中正确性实验的 `maxed` 列不为 0，说明仍有请求达到

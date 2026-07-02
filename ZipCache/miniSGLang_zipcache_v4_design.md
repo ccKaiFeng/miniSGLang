@@ -499,7 +499,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-k-unimportant-bit 2 \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
-  --zipcache-stats-interval 10 \
+  --zipcache-stats-interval 0 \
   2>&1 | tee zipcache_v4_server.log
 ```
 
@@ -563,6 +563,16 @@ python experiment/run_all_experiments.py \
   --only gsm8k_public_correctness,cmmlu_public_correctness,longbench_public_qa,ruler_squad_qa
 ```
 
+正确性 workload 会关闭 `ignore_eos`，并使用较大的生成上限，避免 Qwen3 这类模型
+还在输出 `<think>` 时就被截断：
+
+```text
+GSM8K: max_tokens=2048
+CMMLU: max_tokens=256
+LongBench QA: max_tokens=768
+RULER SQuAD: max_tokens=512
+```
+
 正确性结果在对应日志目录下的：
 
 ```text
@@ -617,6 +627,38 @@ python experiment/run_all_experiments.py \
   --server-log zipcache_v4_server.log \
   --log-root experiment/logs \
   --gpu-sample-interval 0.5
+```
+
+如果 v4 因 CUDA kernel restore、compressed pool 管理和关闭 CUDA Graph 导致测试过慢，
+建议先跑轻量测试。该 preset 只跑：
+
+```text
+1. gsm8k_public_correctness：正确性；
+2. longbench_long_context_pressure：长上下文显存占用；
+3. public_shared_prefix_serial：前缀复用 / compressed hit / kernel restore。
+```
+
+v4 轻量测试：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_quick \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --preset quick \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+如果仍然太慢，可以进一步限制每个 workload 的输入条数：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_quick_16 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --preset quick \
+  --max-samples 16
 ```
 
 对比时不要只看 `nvidia-smi` 的进程总显存。v3/v4 会把显存从 normal KV pool

@@ -126,6 +126,46 @@ python experiment/run_all_experiments.py \
   --gpu-sample-interval 0.5
 ```
 
+如果 v3/v4 速度较慢，建议先跑轻量测试。轻量测试只包含：
+
+- `gsm8k_public_correctness`：一个正确性测试；
+- `longbench_long_context_pressure`：一个长上下文显存压力测试；
+- `public_shared_prefix_serial`：一个前缀复用测试。
+
+ZipCache v4 轻量测试示例：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_quick \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --preset quick \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+main 轻量测试示例：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode main_quick \
+  --base-url http://127.0.0.1:30000 \
+  --preset quick \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+`--preset quick` 默认会限制每个 workload 的样本数。如果还想更快，可以统一覆盖样本数：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_quick_16 \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --preset quick \
+  --max-samples 16
+```
+
 结果保存到：
 
 ```text
@@ -169,6 +209,15 @@ python experiment/run_all_experiments.py \
 正确性 workload 会自动使用更大的 `max_tokens`，并向服务端发送
 `ignore_eos=false`。这样 Qwen3 这类会输出 `<think>` 的模型不容易在推理中途被
 `max_tokens` 截断；性能压测 workload 仍保留固定长度输出，便于比较吞吐。
+当前正确性测试的生成上限为：
+
+```text
+GSM8K: max_tokens=2048
+CMMLU: max_tokens=256
+LongBench QA: max_tokens=768
+RULER SQuAD: max_tokens=512
+```
+
 如果 `report.md` 中某个正确性实验的 `maxed` 仍然较大，说明仍有请求打满了
 `max_tokens`，需要继续提高该 workload 的生成上限。
 
