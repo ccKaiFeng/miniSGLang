@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import weakref
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
@@ -1177,7 +1178,7 @@ class ZipCacheV3Manager(ZipCacheV2Manager):
         self.entry_by_node_uuid: Dict[int, int] = {}
         self._next_entry_id = 1
         self._last_stats_log = 0.0
-        self._released_handle_ids: set[int] = set()
+        self._released_handle_refs: Dict[int, weakref.ReferenceType[Any]] = {}
         self._stats: Dict[str, int | float] = {
             "num_demotions": 0,
             "num_demote_failures": 0,
@@ -1371,9 +1372,14 @@ class ZipCacheV3Manager(ZipCacheV2Manager):
         if not isinstance(handle, (_V3MaterializedHandle, _V3OwnedHandle)):
             return
         handle_id = id(handle)
-        if handle_id in self._released_handle_ids:
-            return
-        self._released_handle_ids.add(handle_id)
+        released_ref = self._released_handle_refs.get(handle_id)
+        if released_ref is not None:
+            released_handle = released_ref()
+            if released_handle is handle:
+                return
+            if released_handle is None:
+                self._released_handle_refs.pop(handle_id, None)
+        self._released_handle_refs[handle_id] = weakref.ref(handle)
         if handle.temporary_indices.numel() == 0:
             return
         cache_manager._free(handle.temporary_indices)

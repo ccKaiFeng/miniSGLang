@@ -1321,7 +1321,7 @@ git pull origin main
 
 ```bash
 PYTHONPATH=python python -m minisgl \
-  --model-path /root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-0___6B \
+  --model-path Qwen/Qwen3-0___6B \
   --host 0.0.0.0 \
   --port 30000 \
   --cache-type radix \
