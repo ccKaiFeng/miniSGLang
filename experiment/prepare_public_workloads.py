@@ -87,7 +87,7 @@ def make_gsm8k(root: Path, out: Path, limit: int) -> int:
                     f"Question: {row['question']}"
                 ),
                 "answer": extract_gsm8k_final_answer(row["answer"]),
-                "max_tokens": 1024,
+                "max_tokens": 2048,
             }
         )
     return write_jsonl(out, rows)
@@ -123,7 +123,7 @@ def make_cmmlu(root: Path, out: Path, limit: int, subjects: List[str]) -> int:
                     "choices": {"A": row["A"], "B": row["B"], "C": row["C"], "D": row["D"]},
                     "prompt": prompt,
                     "answer": str(row["Answer"]).strip().upper(),
-                    "max_tokens": 128,
+                    "max_tokens": 256,
                 }
             )
             if len(rows) >= limit:
@@ -173,7 +173,7 @@ def collect_longbench_rows(
                     "answer_type": "text_contains",
                     "prompt": longbench_prompt(row, max_context_chars=max_context_chars),
                     "answers": list(answers) if isinstance(answers, list) else [str(answers)],
-                    "max_tokens": 512,
+                    "max_tokens": 768,
                     "input_chars": len(str(row.get("context", ""))) + len(str(row.get("input", ""))),
                     "reported_length": row.get("length"),
                 }
@@ -196,7 +196,7 @@ def make_long_context_pressure(root: Path, out: Path, limit: int, tasks: List[st
     )
     for row in rows:
         row["id"] = row["id"].replace("longbench_", "long_context_")
-        row["max_tokens"] = 256
+        row["max_tokens"] = 512
     rows.sort(key=lambda x: int(x.get("input_chars") or 0), reverse=True)
     return write_jsonl(out, rows[:limit])
 

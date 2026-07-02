@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import subprocess
 import sys
@@ -17,7 +18,7 @@ EXPERIMENTS = [
         "dataset": "workloads/gsm8k_public_correctness.jsonl",
         "concurrency": 1,
         "repeat": 1,
-        "max_tokens": 1024,
+        "max_tokens": 2048,
         "ignore_eos": False,
         "description": "GSM8K 公开测试集数学推理正确性测试，使用标准数字答案自动计算 accuracy。",
         "evaluate": "auto",
@@ -27,7 +28,7 @@ EXPERIMENTS = [
         "dataset": "workloads/cmmlu_public_correctness.jsonl",
         "concurrency": 1,
         "repeat": 1,
-        "max_tokens": 128,
+        "max_tokens": 256,
         "ignore_eos": False,
         "description": "CMMLU 公开中文多学科选择题正确性测试，自动抽取 A/B/C/D 选项并计算 accuracy。",
         "evaluate": "auto",
@@ -37,7 +38,7 @@ EXPERIMENTS = [
         "dataset": "workloads/longbench_public_qa.jsonl",
         "concurrency": 4,
         "repeat": 1,
-        "max_tokens": 512,
+        "max_tokens": 768,
         "ignore_eos": False,
         "description": "LongBench 公开长上下文问答任务，用于同时观察长输入性能和近似 answer contains 正确性。",
         "evaluate": "auto",
@@ -71,7 +72,7 @@ EXPERIMENTS = [
         "dataset": "workloads/ruler_squad_qa.jsonl",
         "concurrency": 2,
         "repeat": 1,
-        "max_tokens": 256,
+        "max_tokens": 512,
         "ignore_eos": False,
         "description": "RULER helper 下载得到的 SQuAD 问答数据，用于长上下文检索类正确性近似评估。",
         "evaluate": "auto",
@@ -85,6 +86,34 @@ EXPERIMENTS = [
         "description": "本地生成的 generated-shared-prefix 压测负载，保留用于强 prefix cache 压力测试。",
     },
 ]
+
+EXPERIMENT_PRESETS = {
+    "full": None,
+    "quick": [
+        "gsm8k_public_correctness",
+        "longbench_long_context_pressure",
+        "public_shared_prefix_serial",
+    ],
+}
+
+QUICK_OVERRIDES = {
+    "gsm8k_public_correctness": {
+        "sample_limit": 64,
+        "description": "轻量 GSM8K 正确性测试，只取前 64 条样本，降低 v3/v4 测试时间。",
+    },
+    "longbench_long_context_pressure": {
+        "sample_limit": 32,
+        "concurrency": 4,
+        "max_tokens": 128,
+        "description": "轻量长上下文显存压力测试，只取前 32 条 LongBench 长样本。",
+    },
+    "public_shared_prefix_serial": {
+        "sample_limit": 32,
+        "repeat": 2,
+        "max_tokens": 96,
+        "description": "轻量共享前缀复用测试，顺序重复前 32 条样本，观察 compressed hit/restore。",
+    },
+}
 
 
 def now_stamp() -> str:
@@ -145,15 +174,24 @@ def run_command(cmd: List[str], log_path: Path) -> int:
         return int(proc.returncode)
 
 
-def select_experiments(only: str | None) -> List[Dict[str, Any]]:
+def select_experiments(only: str | None, preset: str) -> List[Dict[str, Any]]:
     if only is None or not only.strip():
-        return EXPERIMENTS
-    wanted = {name.strip() for name in only.split(",") if name.strip()}
-    selected = [exp for exp in EXPERIMENTS if exp["name"] in wanted]
-    missing = sorted(wanted - {exp["name"] for exp in selected})
-    if missing:
-        names = ", ".join(exp["name"] for exp in EXPERIMENTS)
-        raise SystemExit(f"Unknown experiment(s): {missing}. Available: {names}")
+        preset_names = EXPERIMENT_PRESETS[preset]
+        selected = copy.deepcopy(EXPERIMENTS)
+        if preset_names is not None:
+            wanted = set(preset_names)
+            selected = [exp for exp in selected if exp["name"] in wanted]
+    else:
+        wanted = {name.strip() for name in only.split(",") if name.strip()}
+        selected = [copy.deepcopy(exp) for exp in EXPERIMENTS if exp["name"] in wanted]
+        missing = sorted(wanted - {exp["name"] for exp in selected})
+        if missing:
+            names = ", ".join(exp["name"] for exp in EXPERIMENTS)
+            raise SystemExit(f"Unknown experiment(s): {missing}. Available: {names}")
+
+    if preset == "quick":
+        for exp in selected:
+            exp.update(QUICK_OVERRIDES.get(exp["name"], {}))
     return selected
 
 
@@ -299,6 +337,18 @@ def main() -> None:
     parser.add_argument("--server-log", type=Path, default=None, help="Optional ZipCache server log.")
     parser.add_argument("--skip-server-check", action="store_true")
     parser.add_argument(
+        "--preset",
+        choices=sorted(EXPERIMENT_PRESETS),
+        default="full",
+        help="Experiment preset. 'quick' runs one correctness test and two performance tests.",
+    )
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Override every experiment sample_limit. Limit is applied before repeat.",
+    )
+    parser.add_argument(
         "--only",
         default=None,
         help="Comma-separated experiment names to run. Default: run all public workloads.",
@@ -308,7 +358,10 @@ def main() -> None:
 
     repo_root = Path(__file__).resolve().parents[1]
     exp_root = Path(__file__).resolve().parent
-    experiments = select_experiments(args.only)
+    experiments = select_experiments(args.only, args.preset)
+    if args.max_samples is not None:
+        for exp in experiments:
+            exp["sample_limit"] = args.max_samples
     if args.list_experiments:
         for exp in experiments:
             print(f"{exp['name']}: {exp['description']}")
@@ -331,6 +384,8 @@ def main() -> None:
 
     manifest: Dict[str, Any] = {
         "mode": args.mode,
+        "preset": args.preset,
+        "max_samples_override": args.max_samples,
         "base_url": args.base_url,
         "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "run_dir": str(run_dir),
@@ -378,6 +433,8 @@ def main() -> None:
             cmd.extend(["--max-tokens", str(exp["max_tokens"])])
         if exp.get("ignore_eos") is not None:
             cmd.extend(["--ignore-eos", "true" if exp["ignore_eos"] else "false"])
+        if exp.get("sample_limit") is not None:
+            cmd.extend(["--limit", str(exp["sample_limit"])])
         print(f"\n===== Running {name} ({args.mode}) =====")
         exit_code = run_command(cmd, log_file)
         if exit_code != 0:

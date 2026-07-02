@@ -28,6 +28,7 @@ def load_dataset(
     repeat: int,
     max_tokens_override: int | None,
     ignore_eos_override: bool | None,
+    limit: int | None,
 ) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
@@ -35,6 +36,8 @@ def load_dataset(
             line = line.strip()
             if line:
                 rows.append(json.loads(line))
+    if limit is not None and limit > 0:
+        rows = rows[:limit]
     expanded = []
     for r in range(repeat):
         for row in rows:
@@ -267,9 +270,21 @@ def main() -> None:
     )
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--gpu-sample-interval", type=float, default=0.0)
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Use only the first N dataset rows before repeat. Useful for quick ZipCache tests.",
+    )
     args = parser.parse_args()
 
-    items = load_dataset(args.dataset, args.repeat, args.max_tokens, args.ignore_eos)
+    items = load_dataset(
+        args.dataset,
+        args.repeat,
+        args.max_tokens,
+        args.ignore_eos,
+        args.limit,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
 
