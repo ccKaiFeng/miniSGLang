@@ -1327,6 +1327,7 @@ PYTHONPATH=python python -m minisgl \
   --cache-type radix \
   --max-running-requests 16 \
   --max-prefill-length 4096 \
+   --cuda-graph-max-bs 0 \
   2>&1 | tee main_server.log
 ```
 

@@ -349,7 +349,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-k-unimportant-bit 2 \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
-  --zipcache-stats-interval 10 \
+  --zipcache-stats-interval 0 \
   2>&1 | tee zipcache_v4_server.log
 ```
 
@@ -571,18 +571,6 @@ cmmlu_public_correctness_eval.json
 longbench_public_qa_eval.json
 ruler_squad_qa_eval.json
 ```
-
-正确性 workload 会自动关闭 `ignore_eos` 并提高生成上限：
-
-```text
-GSM8K: max_tokens=1024
-CMMLU: max_tokens=128
-LongBench QA: max_tokens=512
-RULER SQuAD: max_tokens=256
-```
-
-如果 `report.md` 中正确性实验的 `maxed` 列不为 0，说明仍有请求达到
-`max_tokens` 上限，需要继续提高对应 workload 的生成长度。
 
 ### 12.4 main / v3 / v4 对比方式
 
