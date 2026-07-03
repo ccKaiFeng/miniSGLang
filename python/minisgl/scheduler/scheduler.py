@@ -85,7 +85,11 @@ class Scheduler(SchedulerIOMixin):
         # initialize other managers
         self.table_manager = TableManager(config.max_running_req, self.engine.page_table)
         self.cache_manager = CacheManager(
-            self.engine.num_pages, config.page_size, self.engine.page_table, config.cache_type
+            self.engine.num_pages,
+            config.page_size,
+            self.engine.page_table,
+            config.cache_type,
+            zipcache_manager=self.engine.zipcache_manager,
         )
         self.decode_manager = DecodeManager(config.page_size)
         self.prefill_manager = PrefillManager(
@@ -108,6 +112,11 @@ class Scheduler(SchedulerIOMixin):
         logger.info_rank0("Scheduler is idle, waiting for new reqs...")
         # 空闲时做一次 cache 完整性检查，尽早发现 page 泄漏或统计错误。
         self.cache_manager.check_integrity()
+        if self.engine.zipcache_manager is not None:
+            if hasattr(self.engine.zipcache_manager, "maybe_log_stats"):
+                self.engine.zipcache_manager.maybe_log_stats()
+            else:
+                self.engine.zipcache_manager.log_stats()
 
     def overlap_loop(self, last_data: ForwardData | None) -> ForwardData | None:
         """
@@ -271,6 +280,8 @@ class Scheduler(SchedulerIOMixin):
     def _free_req_resources(self, req: Req) -> None:
         """释放一个请求占用的 table slot，并把可缓存部分交给 cache manager。"""
 
+        if self.engine.zipcache_manager is not None:
+            self.engine.zipcache_manager.free_request(req.uid)
         self.table_manager.free(req.table_idx)
         self.cache_manager.cache_req(req, finished=True)
 

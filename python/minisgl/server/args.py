@@ -282,6 +282,124 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         help="The MoE backend to use.",
     )
 
+    parser.add_argument(
+        "--enable-zipcache-v3",
+        action="store_true",
+        default=ServerArgs.enable_zipcache_v3,
+        help="Enable experimental ZipCache v3 GPU compressed prefix archive.",
+    )
+    parser.add_argument(
+        "--enable-zipcache-cuda-graph",
+        action="store_true",
+        default=ServerArgs.enable_zipcache_cuda_graph,
+        help=(
+            "Allow ZipCache v3 to use CUDA Graph for decode forward. "
+            "Restore/demote still run outside CUDA Graph. Experimental."
+        ),
+    )
+    parser.add_argument(
+        "--zipcache-unimportant-ratio",
+        type=float,
+        default=ServerArgs.zipcache_unimportant_ratio,
+        help="The fraction of KV tokens quantized with the lower ZipCache bit width.",
+    )
+    parser.add_argument(
+        "--zipcache-k-important-bit",
+        type=int,
+        default=ServerArgs.zipcache_k_important_bit,
+        help="Quantization bit width for salient Key cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-k-unimportant-bit",
+        type=int,
+        default=ServerArgs.zipcache_k_unimportant_bit,
+        help="Quantization bit width for non-salient Key cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-v-important-bit",
+        type=int,
+        default=ServerArgs.zipcache_v_important_bit,
+        help="Quantization bit width for salient Value cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-v-unimportant-bit",
+        type=int,
+        default=ServerArgs.zipcache_v_unimportant_bit,
+        help="Quantization bit width for non-salient Value cache tokens.",
+    )
+    parser.add_argument(
+        "--zipcache-protect-recent-tokens",
+        type=int,
+        default=ServerArgs.zipcache_protect_recent_tokens,
+        help="Always keep the most recent N tokens out of the low-bit group.",
+    )
+    parser.add_argument(
+        "--zipcache-stats-interval",
+        type=float,
+        default=ServerArgs.zipcache_stats_interval,
+        help="Seconds between ZipCache stats logs. Set <= 0 to disable periodic logs.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-normal-pool-pages",
+        type=int,
+        default=ServerArgs.zipcache_v3_normal_pool_pages,
+        help="Normal fp16/bf16 KV pool pages for ZipCache v3. 0 keeps the normal policy.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-demote-on-finish",
+        action=argparse.BooleanOptionalAction,
+        default=ServerArgs.zipcache_v3_demote_on_finish,
+        help="Demote finished radix cache nodes into the ZipCache v3 compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-compressed-pool-mb",
+        type=int,
+        default=ServerArgs.zipcache_v3_compressed_pool_mb,
+        help="Fixed GPU compressed pool size for ZipCache v3. 0 derives from ratio.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-compressed-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_compressed_pool_ratio,
+        help="ZipCache v3 compressed pool bytes as a ratio of the normal KV pool when MB is 0.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-q4-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_q4_pool_ratio,
+        help="ZipCache v3 q4 buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-q2-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_q2_pool_ratio,
+        help="ZipCache v3 q2 buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-scale-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_scale_pool_ratio,
+        help="ZipCache v3 scale/min buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-ids-pool-ratio",
+        type=float,
+        default=ServerArgs.zipcache_v3_ids_pool_ratio,
+        help="ZipCache v3 token-id buffer ratio inside compressed pool.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-keep-compressed-after-restore",
+        action=argparse.BooleanOptionalAction,
+        default=ServerArgs.zipcache_v3_keep_compressed_after_restore,
+        help="Keep compressed entries after temporary restore in ZipCache v3.",
+    )
+    parser.add_argument(
+        "--zipcache-v3-min-restore-tokens",
+        type=int,
+        default=ServerArgs.zipcache_v3_min_restore_tokens,
+        help="Only restore compressed radix nodes with at least this many tokens.",
+    )
+
     # shell 模式：不启动 HTTP 服务，而是在当前终端里交互聊天。
     parser.add_argument(
         "--shell-mode",
@@ -301,6 +419,22 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         kwargs["cuda_graph_max_bs"] = 1
         kwargs["max_running_req"] = 1
         kwargs["silent_output"] = True
+
+    zipcache_enabled = kwargs["enable_zipcache_v3"]
+    zipcache_cuda_graph_allowed = (
+        kwargs["enable_zipcache_cuda_graph"] and kwargs["enable_zipcache_v3"]
+    )
+    if kwargs["enable_zipcache_cuda_graph"] and not zipcache_cuda_graph_allowed:
+        parser.error("--enable-zipcache-cuda-graph requires --enable-zipcache-v3.")
+    if zipcache_enabled and not zipcache_cuda_graph_allowed:
+        # v3 的 restore/demote 在 graph 外执行。默认关闭 graph，方便先看清
+        # 压缩路径本身的开销；需要公平对比时可显式开启。
+        kwargs["cuda_graph_max_bs"] = 0
+    elif zipcache_cuda_graph_allowed and kwargs["cuda_graph_max_bs"] is None:
+        # main 会根据显存自动 capture 到 160/256。ZipCache v3 还要给
+        # compressed pool 和临时 restore pages 留空间，因此默认采用保守上限。
+        # 需要更大 decode graph 时可显式传 --cuda-graph-max-bs。
+        kwargs["cuda_graph_max_bs"] = 16
 
     # 展开用户目录路径，例如 ~/models/qwen。
     if kwargs["model_path"].startswith("~"):

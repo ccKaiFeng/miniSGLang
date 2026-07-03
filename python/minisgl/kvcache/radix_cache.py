@@ -55,6 +55,8 @@ class RadixTreeNode:
         self._key: torch.Tensor
         self._value: torch.Tensor
         self._length: int
+        self.value_kind: str = "fp16"
+        self.compressed_id: int | None = None
 
     def set_key_value(self, key: torch.Tensor, value: torch.Tensor) -> None:
         """设置当前节点保存的 token key 和 KV cache indices。"""
@@ -63,6 +65,26 @@ class RadixTreeNode:
         self._key = key
         self._value = value
         self._length = len(key)
+        self.value_kind = "fp16"
+        self.compressed_id = None
+
+    def mark_compressed(self, compressed_id: int) -> None:
+        """标记当前节点的真实 KV 已经从 fp16 page demote 到 compressed pool。"""
+
+        self.value_kind = "compressed"
+        self.compressed_id = compressed_id
+
+    def mark_restored(self, value: torch.Tensor) -> None:
+        """把 compressed 节点重新物化成 normal fp16 page。"""
+
+        assert len(value) == self.length
+        self._value = value
+        self.value_kind = "fp16"
+        self.compressed_id = None
+
+    @property
+    def is_compressed(self) -> bool:
+        return self.value_kind == "compressed"
 
     def set_parent(self, parent: RadixTreeNode) -> None:
         """把当前节点挂到 parent 下面。"""
@@ -183,13 +205,13 @@ class RadixPrefixCache(BasePrefixCache):
             while not node.is_root():
                 node.ref_count -= 1
                 assert node.ref_count >= 0
-                if node.ref_count == 0:
+                if node.ref_count == 0 and not node.is_compressed:
                     self.evictable_size += node.length
                     self.protected_size -= node.length
                 node = node.parent
         else:
             while not node.is_root():
-                if node.ref_count == 0:
+                if node.ref_count == 0 and not node.is_compressed:
                     self.evictable_size -= node.length
                     self.protected_size += node.length
                 node.ref_count += 1
@@ -245,13 +267,14 @@ class RadixPrefixCache(BasePrefixCache):
             ), f"Cannot evict enough cache, need {size}, only {evicted_size} evicted"
             node = heapq.heappop(leave_nodes)
             assert node.ref_count == 0 and node.is_leaf() and not node.is_root()
+            assert not node.is_compressed
             evicted_size += node.length
             evicted_indices.append(node.value)
             self.evictable_size -= node.length
             parent = node.parent
             del parent.children[self.key_fn(node._key)]
             # NOTE: root is always protected, so won't be evicted
-            if parent.is_leaf() and parent.ref_count == 0:
+            if parent.is_leaf() and parent.ref_count == 0 and not parent.is_compressed:
                 heapq.heappush(leave_nodes, parent)
 
         return torch.cat(evicted_indices)
@@ -284,7 +307,7 @@ class RadixPrefixCache(BasePrefixCache):
         while len(nodes) > 0:
             node = nodes.pop()
             if node.is_leaf():
-                if node.ref_count == 0:
+                if node.ref_count == 0 and not node.is_compressed:
                     leave_nodes.append(node)
             else:
                 for child in node.children.values():
@@ -320,6 +343,10 @@ class RadixPrefixCache(BasePrefixCache):
 
             # need to split the node if not fully matched
             if match_len != node.length:
+                if node.is_compressed:
+                    # v2 初版不切分 compressed entry。否则需要同步切分 compressed
+                    # pool handle，复杂且容易让 radix node 指向错误 KV。
+                    return node.parent, prefix_len - match_len
                 node = node.split_at(match_len)
                 node.timestamp = tic
                 return node, prefix_len
@@ -328,6 +355,39 @@ class RadixPrefixCache(BasePrefixCache):
             node.timestamp = tic
 
         return node, prefix_len
+
+    def path_nodes(self, handle: RadixCacheHandle) -> List[RadixTreeNode]:
+        """返回 handle 从 root 到命中节点的所有非 root 节点。"""
+
+        node = handle.node
+        nodes: List[RadixTreeNode] = []
+        while not node.is_root():
+            nodes.append(node)
+            node = node.parent
+        nodes.reverse()
+        return nodes
+
+    def mark_node_compressed(self, node: RadixTreeNode, compressed_id: int) -> None:
+        """把一个 normal radix node 标记为 compressed，并更新 normal page 统计。"""
+
+        if node.is_compressed:
+            return
+        assert node.ref_count == 0, "Only unlocked radix nodes can be compressed"
+        node.mark_compressed(compressed_id)
+        self.evictable_size -= node.length
+        assert self.evictable_size >= 0
+
+    def mark_node_restored(self, node: RadixTreeNode, indices: torch.Tensor) -> None:
+        """把 compressed node 恢复为 normal node，并更新 normal page 统计。"""
+
+        if not node.is_compressed:
+            node.mark_restored(indices)
+            return
+        node.mark_restored(indices)
+        if node.ref_count == 0:
+            self.evictable_size += node.length
+        else:
+            self.protected_size += node.length
 
 
 def _get_key_fn(page_size: int) -> KEY_FN:

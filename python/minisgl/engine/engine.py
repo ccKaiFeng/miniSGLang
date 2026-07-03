@@ -117,6 +117,26 @@ class Engine:
             device=self.device,
         )
 
+        self.zipcache_manager = None
+        if config.enable_zipcache_v3:
+            from minisgl.zipcache import ZipCacheV3Manager
+
+            self.zipcache_manager = ZipCacheV3Manager(
+                config=config,
+                kv_pool=self.kv_cache,
+                page_table=self.page_table,
+            )
+            logger.info_rank0(
+                "[ZipCacheV3] enabled: temporary GPU restore, k=%s/%s bits, "
+                "v=%s/%s bits, unimportant_ratio=%s, normal_pages=%s",
+                config.zipcache_k_important_bit,
+                config.zipcache_k_unimportant_bit,
+                config.zipcache_v_important_bit,
+                config.zipcache_v_unimportant_bit,
+                config.zipcache_unimportant_ratio,
+                self.num_pages,
+            )
+
         # ======================= Attention & MoE backend initialization ========================
         # 创建 attention backend，例如 FlashAttention、FlashInfer、TensorRT-LLM。
         self.ctx.attn_backend = self.attn_backend = create_attention_backend(
@@ -225,7 +245,15 @@ class Engine:
             * self.dtype.itemsize
             * config.model_config.num_layers
         )
-        num_pages = config.num_page_override
+        v3_pages = int(getattr(config, "zipcache_v3_normal_pool_pages", 0))
+        if getattr(config, "enable_zipcache_v3", False) and v3_pages > 0:
+            num_pages = v3_pages
+            logger.info_rank0(
+                "[ZipCacheV3] override normal KV pool pages: num_pages=%s",
+                num_pages,
+            )
+        else:
+            num_pages = config.num_page_override
         if num_pages is None:
             # 模型加载消耗 = 加载前空闲 - 加载后空闲。
             model_memory = old_free_memory - new_free_memory
@@ -295,6 +323,8 @@ class Engine:
     def shutdown(self) -> None:
         """释放 Engine 持有的通信和 graph 资源。"""
 
+        if self.zipcache_manager is not None:
+            self.zipcache_manager.log_stats()
         self.graph_runner.destroy_cuda_graphs()
         torch.distributed.destroy_process_group()
         destroy_distributed()
@@ -332,3 +362,20 @@ def _adjust_config(config: EngineConfig):
         # MoE 模型默认使用 fused MoE backend。
         override("moe_backend", "fused")
         logger.info_rank0(f"Auto-selected MoE backend: {config.moe_backend}")
+
+    zipcache_enabled = config.enable_zipcache_v3
+    zipcache_cuda_graph_allowed = bool(
+        config.enable_zipcache_cuda_graph and config.enable_zipcache_v3
+    )
+    if zipcache_enabled and not zipcache_cuda_graph_allowed:
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        logger.warning_rank0("CUDA Graph is disabled for ZipCache")
+    elif zipcache_cuda_graph_allowed:
+        if config.cuda_graph_max_bs is None:
+            override("cuda_graph_max_bs", 16)
+        logger.warning_rank0(
+            "CUDA Graph is enabled experimentally for ZipCache v3 decode only. "
+            "Compressed KV restore/demote still runs outside CUDA Graph. "
+            f"cuda_graph_max_bs={config.cuda_graph_max_bs}."
+        )
