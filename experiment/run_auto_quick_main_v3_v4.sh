@@ -7,7 +7,7 @@ set -Eeuo pipefail
 #   bash experiment/run_auto_quick_main_v3_v4.sh
 #
 # 如果要测试 CUDA Graph，对 main/v3/v4 使用同一个 graph 上限：
-#   ENABLE_CUDA_GRAPH=1 CUDA_GRAPH_MAX_BS=16 bash experiment/run_auto_quick_main_v3_v4.sh
+#   ENABLE_CUDA_GRAPH=1 CUDA_GRAPH_MAX_BS=128 bash experiment/run_auto_quick_main_v3_v4.sh
 #
 # 常用覆盖项：
 #   MODEL_PATH=/path/to/model
@@ -20,6 +20,7 @@ set -Eeuo pipefail
 # 每个版本目录会保存 server_command.txt、quick_test_command.txt 和本脚本快照。
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -69,11 +70,13 @@ AUTO_PREFIX="${RUN_STAMP}_auto_quick_main_v3_v4_${GRAPH_LABEL}"
 CONTROLLER_LOG="${CONTROLLER_LOG:-$LOG_BASE/${AUTO_PREFIX}_controller.log}"
 SUMMARY_MD="${SUMMARY_MD:-$LOG_BASE/${AUTO_PREFIX}_summary.md}"
 SERVER_TMP_DIR="${SERVER_TMP_DIR:-${TMPDIR:-/tmp}/${AUTO_PREFIX}_server_tmp}"
+LAUNCHER_SNAPSHOT="$SERVER_TMP_DIR/auto_quick_launcher.sh"
 
 SERVER_PID=""
 SERVER_USES_SETSID=0
 
 mkdir -p "$LOG_BASE" "$SERVER_TMP_DIR"
+cp "$SCRIPT_PATH" "$LAUNCHER_SNAPSHOT"
 
 export PYTHONPATH="$REPO_ROOT/python${PYTHONPATH:+:$PYTHONPATH}"
 
@@ -299,7 +302,7 @@ run_quick_tests() {
     cp "$SERVER_TMP_DIR/${mode}_server_command.txt" "$run_dir/server_command.txt"
     cp "$SERVER_TMP_DIR/${mode}_quick_test_command.txt" "$run_dir/quick_test_command.txt"
     cp "$SERVER_TMP_DIR/${mode}_server.pid" "$run_dir/server.pid" 2>/dev/null || true
-    cp "${BASH_SOURCE[0]}" "$run_dir/auto_quick_launcher.sh"
+    cp "$LAUNCHER_SNAPSHOT" "$run_dir/auto_quick_launcher.sh"
     {
       printf 'MODEL_PATH=%q\n' "$MODEL_PATH"
       printf 'PYTHON_BIN=%q\n' "$PYTHON_BIN"
