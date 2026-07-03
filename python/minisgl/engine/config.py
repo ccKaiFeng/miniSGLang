@@ -65,6 +65,7 @@ class EngineConfig:
     enable_zipcache_v2: bool = False
     enable_zipcache_v3: bool = False
     enable_zipcache_v4: bool = False
+    enable_zipcache_cuda_graph: bool = False
     zipcache_unimportant_ratio: float = 0.4
     zipcache_k_important_bit: int = 4
     zipcache_k_unimportant_bit: int = 2

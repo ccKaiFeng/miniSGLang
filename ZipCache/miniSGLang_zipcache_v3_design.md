@@ -1200,7 +1200,9 @@ contexts or more reusable prefixes without modifying the attention kernel.
 7. compressed 命中时临时 restore 到 normal pool；
 8. restore 后 compressed entry 默认保留，后续请求仍可再次命中；
 9. 请求结束时释放临时 restored normal pages；
-10. attention kernel 和 attention 数学逻辑不修改。
+10. attention kernel 和 attention 数学逻辑不修改；
+11. 默认仍关闭 CUDA Graph；需要对比 decode CUDA Graph 收益时，可显式加
+    --enable-zipcache-cuda-graph。
 ```
 
 推荐启动方式：
@@ -1222,8 +1224,50 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
   --zipcache-v3-min-restore-tokens 0 \
-  --zipcache-stats-interval 0 \
+  --zipcache-stats-interval 30 \
   2>&1 | tee zipcache_v3_server.log
+```
+
+默认启动方式会关闭 CUDA Graph，这样可以避免 graph capture 额外占用显存，
+也便于和早期 v3 实验结果直接对齐。如果要测试 v3 在开启 decode CUDA Graph 后
+的吞吐变化，可以在上面的命令中额外加入：
+
+```bash
+  --enable-zipcache-cuda-graph \
+  --cuda-graph-max-bs 16 \
+```
+
+含义如下：
+
+```text
+1. --enable-zipcache-cuda-graph：
+   允许 ZipCache v3 使用 main 中已有的 CUDA Graph decode replay 路径。
+2. --cuda-graph-max-bs 16：
+   只 capture batch size 不超过 16 的 decode graph。这个值越大，decode launch
+   开销越低，但 graph 静态 buffer 占用也越大。
+3. ZipCache 的 demote、compressed hit 检查、temporary restore 仍然发生在
+   scheduler/cache 阶段，不会被 capture 到 CUDA Graph 中。
+```
+
+建议实验时至少跑三组：
+
+```text
+main:
+  不开启 ZipCache，记录原始性能。
+
+zipcache_v3:
+  开启 ZipCache v3，不加 --enable-zipcache-cuda-graph。
+
+zipcache_v3_cuda_graph:
+  开启 ZipCache v3，并加 --enable-zipcache-cuda-graph --cuda-graph-max-bs 16。
+```
+
+如果开启 CUDA Graph 后启动阶段 OOM，优先降低：
+
+```text
+1. --cuda-graph-max-bs
+2. --zipcache-v3-compressed-pool-mb
+3. --zipcache-v3-normal-pool-pages
 ```
 
 如果显存不足，优先降低：
@@ -1321,13 +1365,13 @@ git pull origin main
 
 ```bash
 PYTHONPATH=python python -m minisgl \
-  --model-path Qwen/Qwen3-0___6B \
+  --model-path /root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-0___6B \
   --host 0.0.0.0 \
   --port 30000 \
   --cache-type radix \
   --max-running-requests 16 \
   --max-prefill-length 4096 \
-   --cuda-graph-max-bs 0 \
+  --cuda-graph-max-bs 0 \
   2>&1 | tee main_server.log
 ```
 
@@ -1375,6 +1419,28 @@ python experiment/run_all_experiments.py \
   --server-log zipcache_v3_server.log \
   --log-root experiment/logs \
   --gpu-sample-interval 0.5
+```
+
+如果 v3 服务启动时加入了 `--enable-zipcache-cuda-graph`，建议把测试模式名也改成
+`zipcache_v3_cuda_graph`，便于日志目录和 `report.md` 区分：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v3_cuda_graph \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v3_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+公平对比时需要保持 CUDA Graph 口径一致：
+
+```text
+1. 对比 ZipCache 本身开销：
+   main 使用 --cuda-graph-max-bs 0，v3 不加 --enable-zipcache-cuda-graph。
+2. 对比开启 decode graph 后的服务性能：
+   main 使用 --cuda-graph-max-bs 16，v3 使用
+   --enable-zipcache-cuda-graph --cuda-graph-max-bs 16。
 ```
 
 只跑长上下文与 shared-prefix 压测：

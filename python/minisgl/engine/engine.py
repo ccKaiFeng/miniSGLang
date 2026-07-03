@@ -419,12 +419,25 @@ def _adjust_config(config: EngineConfig):
         override("moe_backend", "fused")
         logger.info_rank0(f"Auto-selected MoE backend: {config.moe_backend}")
 
-    if (
+    zipcache_enabled = (
         config.enable_zipcache_v1
         or config.enable_zipcache_v2
         or config.enable_zipcache_v3
         or config.enable_zipcache_v4
-    ):
+    )
+    zipcache_cuda_graph_allowed = bool(
+        config.enable_zipcache_cuda_graph
+        and (config.enable_zipcache_v3 or config.enable_zipcache_v4)
+    )
+    if zipcache_enabled and not zipcache_cuda_graph_allowed:
         override("cuda_graph_bs", [])
         override("cuda_graph_max_bs", 0)
         logger.warning_rank0("CUDA Graph is disabled for ZipCache")
+    elif zipcache_cuda_graph_allowed:
+        if config.cuda_graph_max_bs is None:
+            override("cuda_graph_max_bs", 16)
+        logger.warning_rank0(
+            "CUDA Graph is enabled experimentally for ZipCache v3/v4 decode only. "
+            "Compressed KV restore/demote still runs outside CUDA Graph. "
+            f"cuda_graph_max_bs={config.cuda_graph_max_bs}."
+        )

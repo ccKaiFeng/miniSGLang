@@ -353,6 +353,27 @@ PYTHONPATH=python python -m minisgl \
   2>&1 | tee zipcache_v4_server.log
 ```
 
+默认启动方式会关闭 CUDA Graph，目的是先单独观察 v4 CUDA kernel
+compress/restore 对 TTFT、TPOT 和显存的影响。如果要和 main 一样测试 decode
+CUDA Graph replay，可以在启动命令中额外加入：
+
+```bash
+  --enable-zipcache-cuda-graph \
+  --cuda-graph-max-bs 16 \
+```
+
+该参数只改变 decode forward 的执行方式：
+
+```text
+1. compressed hit 检查仍在 radix/cache 路径中完成；
+2. v4 CUDA restore kernel 仍在 attention 之前执行；
+3. demote/compress 仍在请求结束后的缓存保存路径中执行；
+4. CUDA Graph 只复用 main 已有的 decode replay 逻辑，不改变 attention 数学。
+```
+
+如果开启 CUDA Graph 后显存不足，优先降低 `--cuda-graph-max-bs`。v4 已经为
+compressed pool 预留大量显存，不建议直接使用 main 的自动 graph 上限。
+
 如果 v4 kernel compress 或 restore 在某个环境下编译失败，可临时关闭：
 
 ```bash
@@ -369,11 +390,12 @@ python/minisgl/engine/config.py
   增加 ZipCache v4 配置字段。
 
 python/minisgl/server/args.py
-  增加 --enable-zipcache-v4 和 v4 pool / restore 参数。
+  增加 --enable-zipcache-v4、--enable-zipcache-cuda-graph 和 v4 pool / restore 参数。
 
 python/minisgl/engine/engine.py
   根据 feature flag 创建 ZipCacheV4Manager；支持 v4 normal pool page override；
-  ZipCache 开启时继续关闭 CUDA Graph。
+  ZipCache 默认关闭 CUDA Graph；v3/v4 可通过 --enable-zipcache-cuda-graph
+  实验性开启 decode CUDA Graph。
 
 python/minisgl/scheduler/cache.py
   请求结束后按 v4 demote flag 接入 radix node demotion。
@@ -499,7 +521,7 @@ PYTHONPATH=python python -m minisgl \
   --zipcache-k-unimportant-bit 2 \
   --zipcache-v-important-bit 4 \
   --zipcache-v-unimportant-bit 2 \
-  --zipcache-stats-interval 0 \
+  --zipcache-stats-interval 30 \
   2>&1 | tee zipcache_v4_server.log
 ```
 
@@ -521,6 +543,28 @@ experiment/logs/<时间>_zipcache_v4/
 ```
 
 其中 `report.md` 汇总每个 workload 的吞吐、延迟、显存和 ZipCache 统计。
+
+如果 v4 服务启动时加入了 `--enable-zipcache-cuda-graph`，建议把测试模式名改成
+`zipcache_v4_cuda_graph`，例如：
+
+```bash
+python experiment/run_all_experiments.py \
+  --mode zipcache_v4_cuda_graph \
+  --base-url http://127.0.0.1:30001 \
+  --server-log zipcache_v4_server.log \
+  --log-root experiment/logs \
+  --gpu-sample-interval 0.5
+```
+
+公平对比时需要保持 CUDA Graph 口径一致：
+
+```text
+1. 对比 v4 kernel restore/compress 本身开销：
+   main 使用 --cuda-graph-max-bs 0，v4 不加 --enable-zipcache-cuda-graph。
+2. 对比开启 decode graph 后的服务性能：
+   main 使用 --cuda-graph-max-bs 16，v4 使用
+   --enable-zipcache-cuda-graph --cuda-graph-max-bs 16。
+```
 
 ### 12.2 只跑长上下文与 shared-prefix 压测
 
@@ -629,7 +673,7 @@ python experiment/run_all_experiments.py \
   --gpu-sample-interval 0.5
 ```
 
-如果 v4 因 CUDA kernel restore、compressed pool 管理和关闭 CUDA Graph 导致测试过慢，
+如果 v4 因 CUDA kernel restore、compressed pool 管理或未开启 CUDA Graph 导致测试过慢，
 建议先跑轻量测试。该 preset 只跑：
 
 ```text

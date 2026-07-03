@@ -307,6 +307,15 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
         help="Enable experimental ZipCache v4 CUDA-kernel fused compressed prefix restore.",
     )
     parser.add_argument(
+        "--enable-zipcache-cuda-graph",
+        action="store_true",
+        default=ServerArgs.enable_zipcache_cuda_graph,
+        help=(
+            "Allow ZipCache v3/v4 to use CUDA Graph for decode forward. "
+            "Restore/demote still run outside CUDA Graph. Experimental."
+        ),
+    )
+    parser.add_argument(
         "--zipcache-unimportant-ratio",
         type=float,
         default=ServerArgs.zipcache_unimportant_ratio,
@@ -535,16 +544,29 @@ def parse_args(args: List[str], run_shell: bool = False) -> Tuple[ServerArgs, bo
             "are mutually exclusive."
         )
 
-    if (
+    zipcache_enabled = (
         kwargs["enable_zipcache_v1"]
         or kwargs["enable_zipcache_v2"]
         or kwargs["enable_zipcache_v3"]
         or kwargs["enable_zipcache_v4"]
-    ):
+    )
+    zipcache_cuda_graph_allowed = kwargs["enable_zipcache_cuda_graph"] and (
+        kwargs["enable_zipcache_v3"] or kwargs["enable_zipcache_v4"]
+    )
+    if kwargs["enable_zipcache_cuda_graph"] and not zipcache_cuda_graph_allowed:
+        parser.error(
+            "--enable-zipcache-cuda-graph requires --enable-zipcache-v3 or "
+            "--enable-zipcache-v4."
+        )
+    if zipcache_enabled and not zipcache_cuda_graph_allowed:
         # ZipCache v1 在 attention 前后执行 Python/CPU 压缩恢复逻辑，不适合被
-        # CUDA Graph capture 固化；v2/v3 会动态 materialize prefix page。
-        # 先关闭 graph，保证实验语义清晰。
+        # CUDA Graph capture 固化；v2/v3/v4 默认关闭 graph，保证实验语义清晰。
         kwargs["cuda_graph_max_bs"] = 0
+    elif zipcache_cuda_graph_allowed and kwargs["cuda_graph_max_bs"] is None:
+        # main 会根据显存自动 capture 到 160/256。ZipCache v3/v4 还要给
+        # compressed pool 和临时 restore pages 留空间，因此默认采用保守上限。
+        # 需要更大 decode graph 时可显式传 --cuda-graph-max-bs。
+        kwargs["cuda_graph_max_bs"] = 16
 
     # 展开用户目录路径，例如 ~/models/qwen。
     if kwargs["model_path"].startswith("~"):
