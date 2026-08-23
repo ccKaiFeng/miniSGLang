@@ -23,7 +23,9 @@ class BatchSamplingArgs:
     否则 top_k/top_p/temperatures 会放到 GPU 上供 flashinfer sampling kernel 使用。
     """
 
+    # None 表示 greedy；否则 shape [batch.size]，每个请求一个 temperature。
     temperatures: torch.Tensor | None
+    # top_k/top_p 若不为 None，shape [batch.size]；None 表示这一维没有约束。
     top_k: torch.Tensor | None = None
     top_p: torch.Tensor | None = None
 
@@ -48,6 +50,8 @@ def sample_impl(
     这里使用 flashinfer.sampling：
     1. softmax(logits, temperature) 得到概率；
     2. 根据 top_k/top_p 是否启用，选择对应采样 kernel。
+
+    logits shape [batch.size, vocab_size]；返回 next_token shape [batch.size]。
     """
 
     import flashinfer.sampling as sampling
@@ -113,7 +117,10 @@ class Sampler:
 
     @nvtx_annotate("Sampler")
     def sample(self, logits: torch.Tensor, args: BatchSamplingArgs) -> torch.Tensor:
-        """根据 logits 和采样参数输出 next_token。"""
+        """根据 logits 和采样参数输出 next_token。
+
+        logits shape [batch.size, vocab_size]；返回 GPU tensor shape [batch.size]。
+        """
 
         with torch.cuda.nvtx.range("Sampler"):
             if args.temperatures is None:  # greedy sampling

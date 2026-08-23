@@ -26,7 +26,9 @@ from .base import (
 class CacheManagerCreator(Protocol):
     """prefix cache 创建函数的类型约束。"""
 
-    def __call__(self, device: torch.device) -> BasePrefixCache: ...
+    def __call__(self, device: torch.device) -> BasePrefixCache:
+        """根据 device 创建一个 BasePrefixCache 实例。"""
+        ...
 
 
 SUPPORTED_CACHE_MANAGER = Registry[CacheManagerCreator]("Cache Manager")

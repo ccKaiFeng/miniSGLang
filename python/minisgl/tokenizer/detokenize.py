@@ -92,6 +92,12 @@ class DetokenizeManager:
     """管理多个用户请求的增量 detokenize。"""
 
     def __init__(self, tokenizer: PreTrainedTokenizerBase) -> None:
+        """初始化 detokenizer 状态。
+
+        tokenizer 是 HuggingFace tokenizer；decode_map 按 uid 保存每个请求的增量解码状态。
+        eos_token_id 用于识别结束 token，避免把 EOS 文本发给用户。
+        """
+
         # uid -> DecodeStatus
         # 每个正在生成的请求都有一份 DecodeStatus；请求 finished 后删除。
         self.decode_map: Dict[int, DecodeStatus] = {}

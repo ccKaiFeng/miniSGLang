@@ -58,14 +58,25 @@ class AttentionLayer(StateLessOP):
         self.k_norm = k_norm
 
     def forward(self, qkv: torch.Tensor) -> torch.Tensor:
-        """执行 attention 前后的张量整理和 backend 调用。"""
+        """执行 attention 前后的张量整理和 backend 调用。
+
+        输入 qkv shape [T, local_qkv_dim]，T 是本轮扁平 token 数：
+        - local_qkv_dim = local_q_heads*D + 2*local_kv_heads*D；
+        - split 后 q shape [T, local_q_heads*D]，k/v shape [T, local_kv_heads*D]；
+        - RoPE 在 q/k 的展平行向量上原地生效；随后 q view 成
+          [T, local_q_heads, D] 传给 attention backend；
+        - k/v 保持 [T, local_kv_heads*D]，store_cache 按整行写入 KV pool；
+        - 输出 reshape 回 [T, local_q_heads*D]，再交给 o_proj 做 TP all_reduce。
+        """
 
         ctx = get_global_ctx()
         q, k, v = qkv.split([self.qo_attn_dim, self.kv_attn_dim, self.kv_attn_dim], dim=-1)
+        # q/k/v 此时仍是二维 [T, head_count * head_dim]，norm 需要临时 view 成三维。
         if self.q_norm is not None:
             self.q_norm.forward_inplace(q.view(-1, self.num_qo_heads, self.head_dim))
         if self.k_norm is not None:
             self.k_norm.forward_inplace(k.view(-1, self.num_kv_heads, self.head_dim))
+        # positions shape [T]，RoPE 按每个 token 的绝对位置旋转 q/k。
         q, k = self.rotary.forward(ctx.batch.positions, q, k)
         q = q.view(-1, self.num_qo_heads, self.head_dim)
         o = ctx.attn_backend.forward(q, k, v, self.layer_id, ctx.batch)

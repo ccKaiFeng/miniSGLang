@@ -35,10 +35,10 @@ logger = init_logger(__name__)
 class ForwardOutput(NamedTuple):
     """Engine.forward_batch() 的输出。"""
 
-    # GPU 上的 next token，用于写回 token_pool。
+    # GPU 上的 next token，用于写回 token_pool。shape [batch.size]，dtype int32。
     next_tokens_gpu: torch.Tensor
 
-    # CPU 上的 next token，用于 scheduler 发给 detokenizer。
+    # CPU 上的 next token，用于 scheduler 发给 detokenizer。shape [batch.size]。
     next_tokens_cpu: torch.Tensor
 
     # GPU->CPU 异步拷贝完成事件。
@@ -294,7 +294,12 @@ class Engine:
         return min_free_memory, max_free_memory
 
     def forward_batch(self, batch: Batch, args: BatchSamplingArgs) -> ForwardOutput:
-        """执行一次 batch forward，并采样下一个 token。"""
+        """执行一次 batch forward，并采样下一个 token。
+
+        batch.input_ids shape [total_extend_tokens]；模型返回 logits shape
+        [batch.size, vocab_size]：prefill 时 LMHead 只保留每个请求最后一个 query 的 logits，
+        decode 时每个请求本来只有一个 query token。
+        """
 
         assert torch.cuda.current_stream() == self.stream
 
@@ -344,6 +349,11 @@ def _adjust_config(config: EngineConfig):
     """
 
     def override(attr: str, value: Any):  # this is dangerous, use with caution
+        """绕过 frozen dataclass 限制修改 EngineConfig 字段。
+
+        仅在 Engine 初始化阶段使用，用于把 auto 配置解析为确定值。
+        """
+
         object.__setattr__(config, attr, value)
 
     if config.attention_backend == "auto":

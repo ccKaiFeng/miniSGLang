@@ -28,10 +28,14 @@ class DistributedImpl(ABC):
     """分布式通信后端的抽象接口。"""
 
     @abstractmethod
-    def all_reduce(self, x: torch.Tensor) -> torch.Tensor: ...
+    def all_reduce(self, x: torch.Tensor) -> torch.Tensor:
+        """对所有 TP rank 的 x 求和，并返回每个 rank 上的完整结果。"""
+        ...
 
     @abstractmethod
-    def all_gather(self, x: torch.Tensor) -> torch.Tensor: ...
+    def all_gather(self, x: torch.Tensor) -> torch.Tensor:
+        """收集所有 TP rank 的 x，并沿第 0 维拼接。"""
+        ...
 
 
 @dataclass
@@ -96,9 +100,13 @@ class DistributedCommunicator:
     plugins: List[DistributedImpl] = [TorchDistributedImpl()]
 
     def all_reduce(self, x: torch.Tensor) -> torch.Tensor:
+        """调用当前生效通信插件的 all_reduce。"""
+
         return self.plugins[-1].all_reduce(x)
 
     def all_gather(self, x: torch.Tensor) -> torch.Tensor:
+        """调用当前生效通信插件的 all_gather。"""
+
         return self.plugins[-1].all_gather(x)
 
 

@@ -1,5 +1,21 @@
 from __future__ import annotations
 
+# ZipCache v3 的核心实现。
+#
+# 维度符号：
+# - N: 一个 radix node 覆盖的 token 数，也就是 node.length；
+# - H: 本 TP rank 上的 local KV head 数；
+# - D: head_dim；
+# - M_imp/M_unimp: important/unimportant token 数，二者相加等于 N；
+# - L: transformer layer 数；
+# - P*S: normal KV pool 展平后的物理 token 容量。
+#
+# 对每个 layer，demote 时从 normal KV pool 取出：
+#   k_tensor/v_tensor shape [N, H, D]
+# 然后分成 important/unimportant 两组分别量化，restore 时再解包回
+#   [N, H, D]
+# 并写回新分配的 normal KV indices。
+
 import time
 import weakref
 from dataclasses import dataclass
@@ -14,7 +30,11 @@ logger = init_logger(__name__)
 
 @dataclass(frozen=True)
 class _PoolSlice:
-    """compressed pool 内一段连续 buffer 的归属信息。"""
+    """compressed pool 内一段连续 buffer 的归属信息。
+
+    offset/length 的单位是对应 buffer 的元素个数，不是 byte。
+    例如 q4/q2 buffer 元素是 uint8，scale buffer 元素是 float16。
+    """
 
     buffer_name: str
     offset: int
@@ -33,8 +53,12 @@ class _QuantizedPart:
     - storage_bit：实际 packed 存储 bit，当前只支持 4bit/2bit。
     """
 
+    # ids shape [M]，保存这组 token 在当前 radix node 内的相对位置，范围 [0, N)。
     ids: torch.Tensor
+    # q 是 packed 后的一维 uint8 view，shape [ceil(M*H*D*storage_bit/8)]。
+    # q_shape 记录 unpack 后恢复成 [M, H, D] 需要的原量化值 shape。
     q: torch.Tensor
+    # min/step shape [M, H, 1]，每个 token、每个 KV head 独立保存反量化参数。
     min: torch.Tensor
     step: torch.Tensor
     bit: int
@@ -45,6 +69,11 @@ class _QuantizedPart:
 
     @property
     def estimated_bytes(self) -> int:
+        """返回按 bit 数估算的压缩体积，单位 byte。
+
+        q 部分按 logical_numel * bit 估算；scale 和 ids 按真实 tensor element_size 估算。
+        """
+
         q_bits = self.logical_numel * self.bit
         scale_bytes = (self.min.numel() + self.step.numel()) * self.min.element_size()
         id_bytes = self.ids.numel() * self.ids.element_size()
@@ -52,6 +81,8 @@ class _QuantizedPart:
 
     @property
     def storage_bytes(self) -> int:
+        """返回当前 pool view 实际占用的存储体积，单位 byte。"""
+
         return (
             self.q.numel() * self.q.element_size()
             + self.min.numel() * self.min.element_size()
@@ -62,7 +93,11 @@ class _QuantizedPart:
 
 @dataclass
 class _CompressedTensor:
-    """一个 K 或 V tensor 的 compressed 表示。"""
+    """一个 K 或 V tensor 的 compressed 表示。
+
+    shape 是原始未压缩 tensor 的 shape [N, H, D]，dtype 是原始 KV dtype
+    （通常 fp16/bf16）。important/unimportant 两部分通过 ids 拼回同一个 shape。
+    """
 
     shape: Tuple[int, int, int]
     dtype: torch.dtype
@@ -71,10 +106,14 @@ class _CompressedTensor:
 
     @property
     def estimated_bytes(self) -> int:
+        """返回 K 或 V 两组 token 的估算压缩体积。"""
+
         return self.important.estimated_bytes + self.unimportant.estimated_bytes
 
     @property
     def storage_bytes(self) -> int:
+        """返回 K 或 V 两组 token 在 compressed pool 中的实际占用。"""
+
         return self.important.storage_bytes + self.unimportant.storage_bytes
 
 
@@ -91,7 +130,12 @@ class _LayerEntry:
 
 @dataclass
 class _CompressedEntry:
-    """一个 radix node 对应的完整 compressed KV entry。"""
+    """一个 radix node 对应的完整 compressed KV entry。
+
+    token_ids shape [N]，保存在 CPU 上，主要用于调试/统计；
+    old_indices shape [N]，是 demote 前 normal KV pool 的物理 token index；
+    layers 包含 L 个 layer 的 K/V 压缩结果。
+    """
 
     entry_id: int
     node_uuid: int
@@ -117,10 +161,14 @@ class _V3MaterializedHandle(BaseCacheHandle):
     """
 
     base_handle: Any
+    # matched_indices shape [cached_len]，包含 normal 命中 indices 和本次 restored indices。
     matched_indices: torch.Tensor
+    # temporary_indices shape [num_restored_tokens]，只包含本次临时 restore 分配的 normal indices。
     temporary_indices: torch.Tensor
 
     def get_matched_indices(self) -> torch.Tensor:
+        """返回当前请求可直接写入 page_table 的 normal KV indices。"""
+
         return self.matched_indices
 
 
@@ -129,24 +177,42 @@ class _V3OwnedHandle(BaseCacheHandle):
     """请求 decode 期间持有临时 restored page 的 wrapper handle。"""
 
     base_handle: Any
+    # shape [num_restored_tokens]，请求结束或回退时需要释放回 normal pool。
     temporary_indices: torch.Tensor
 
     @property
     def node(self) -> Any:
+        """透传底层 radix handle 的 node，方便 scheduler 保持原访问方式。"""
+
         return self.base_handle.node
 
     def get_matched_indices(self) -> torch.Tensor:
+        """返回底层 radix handle 的命中 indices。"""
+
         return self.base_handle.get_matched_indices()
 
 
 class _SegmentAllocator:
-    """固定 buffer 内的简单 first-fit allocator。"""
+    """固定 buffer 内的简单 first-fit allocator。
+
+    capacity/free_segments 的单位都是 buffer 元素个数。
+    """
 
     def __init__(self, capacity: int):
+        """初始化一个固定容量 allocator。
+
+        capacity 单位是 buffer 元素个数；初始只有一段 [0, capacity) 空闲区间。
+        """
+
         self.capacity = capacity
         self.free_segments: List[Tuple[int, int]] = [(0, capacity)]
 
     def allocate(self, length: int) -> int | None:
+        """分配 length 个连续元素，返回 offset。
+
+        如果没有足够连续空间，返回 None。length=0 时返回 0，不消耗空间。
+        """
+
         if length == 0:
             return 0
         for idx, (offset, free_len) in enumerate(self.free_segments):
@@ -162,6 +228,8 @@ class _SegmentAllocator:
         return None
 
     def free(self, offset: int, length: int) -> None:
+        """释放一段 [offset, offset+length) 区间并合并相邻空闲段。"""
+
         if length == 0:
             return
         self.free_segments.append((offset, length))
@@ -180,10 +248,14 @@ class _SegmentAllocator:
 
     @property
     def free_size(self) -> int:
+        """返回当前空闲元素总数。"""
+
         return sum(length for _, length in self.free_segments)
 
     @property
     def used_size(self) -> int:
+        """返回当前已用元素总数。"""
+
         return self.capacity - self.free_size
 
 
@@ -206,6 +278,13 @@ class _V3CompressedPool:
         scale_ratio: float,
         ids_ratio: float,
     ):
+        """按比例切分 compressed pool 的四类 GPU buffer。
+
+        total_bytes 是总显存预算。q4/q2 buffer(dtype uint8)保存 packed 量化值；
+        scale_buffer(dtype float16)保存 min/step；ids_buffer(dtype int64)保存 token
+        在 radix node 内的相对位置。
+        """
+
         total_bytes = max(total_bytes, 1024 * 1024)
         ratios = [
             max(q4_ratio, 0.0),
@@ -249,6 +328,16 @@ class _V3CompressedPool:
         step: torch.Tensor,
         bit: int,
     ) -> _QuantizedPart:
+        """把一组量化结果拷入固定 compressed pool。
+
+        输入维度：
+        - ids shape [M]；
+        - q shape [M, H, D]，dtype uint8，数值范围已经 clamp 到 bit 宽；
+        - min_val/step shape [M, H, 1]。
+
+        返回的 _QuantizedPart 持有 pool buffer 的 view，不再拥有独立 tensor。
+        """
+
         if bit > 4:
             raise ValueError("ZipCacheV3 packed pool supports bit width <= 4")
 
@@ -300,9 +389,16 @@ class _V3CompressedPool:
             raise
 
     def free_part(self, part: _QuantizedPart) -> None:
+        """释放一个 QuantizedPart 占用的 q/scale/ids slice。"""
+
         self.free_slices(part.slices)
 
     def free_slices(self, slices: Tuple[_PoolSlice, ...] | List[_PoolSlice]) -> None:
+        """按 slice 描述把空间归还对应 allocator。
+
+        slices 中 offset/length 的单位是对应 buffer 的元素个数。
+        """
+
         for pool_slice in slices:
             if pool_slice.buffer_name == "q4":
                 self.q4_allocator.free(pool_slice.offset, pool_slice.length)
@@ -314,6 +410,12 @@ class _V3CompressedPool:
                 self.ids_allocator.free(pool_slice.offset, pool_slice.length)
 
     def stats(self) -> Dict[str, int | float]:
+        """返回 compressed pool 使用情况。
+
+        所有 *_bytes 字段单位都是 byte；utilization 用于判断 pool 是否接近耗尽。
+        q4/q2/scale/ids 分项可以定位是哪类 buffer 先成为瓶颈。
+        """
+
         q4_used = self.q4_allocator.used_size * self.q4_buffer.element_size()
         q2_used = self.q2_allocator.used_size * self.q2_buffer.element_size()
         scale_used = self.scale_allocator.used_size * self.scale_buffer.element_size()
@@ -346,6 +448,11 @@ class _V3CompressedPool:
         length: int,
         allocated: List[_PoolSlice],
     ) -> int:
+        """从 allocator 分配 length 个元素并记录到 allocated。
+
+        allocated 供异常回滚使用：上层任一后续分配失败时，可以释放已成功分配的 slice。
+        """
+
         offset = allocator.allocate(length)
         if offset is None:
             raise RuntimeError(f"ZipCacheV3 compressed pool is full: buffer={buffer_name}")
@@ -365,6 +472,17 @@ class ZipCacheV3Manager:
     """
 
     def __init__(self, config: Any, kv_pool: Any, page_table: torch.Tensor):
+        """初始化 ZipCache v3 manager。
+
+        参数：
+        - config：EngineConfig/ServerArgs 派生配置，包含 enable_zipcache_v3 和量化 bit；
+        - kv_pool：normal KV pool，提供 k_cache/v_cache/store_kv 和 device/dtype；
+        - page_table：全局 page table，shape [max_running_req+1, aligned_max_seq_len]。
+
+        manager 会额外分配固定大小 compressed pool，并维护 entry_id -> compressed entry
+        与 radix node uuid -> entry_id 的索引。
+        """
+
         self.config = config
         self.kv_pool = kv_pool
         self.page_table = page_table
@@ -412,6 +530,8 @@ class ZipCacheV3Manager:
         )
 
     def enabled(self) -> bool:
+        """返回当前是否启用 ZipCache v3 feature flag。"""
+
         return bool(getattr(self.config, "enable_zipcache_v3", False))
 
     def before_attention(self, **_: Any) -> None:
@@ -428,6 +548,9 @@ class ZipCacheV3Manager:
 
         成功时返回原 normal indices，调用者负责把这些 page 归还 normal pool。
         失败时返回 None，调用者保持原 miniSGLang 行为。
+
+        node.value shape [N]，元素是 normal KV pool 物理 token index。
+        对每层读取 flat_k[indices]/flat_v[indices] 得到 [N, H, D] 后量化。
         """
 
         if not self.enabled() or node.is_root() or node.is_compressed:
@@ -445,6 +568,8 @@ class ZipCacheV3Manager:
             for layer_id in range(self.kv_pool.num_layers):
                 flat_k = _flatten_layer_cache(self.kv_pool.k_cache(layer_id))
                 flat_v = _flatten_layer_cache(self.kv_pool.v_cache(layer_id))
+                # flat_k/flat_v shape [P*S, H, D]；indices shape [N]；
+                # k_tensor/v_tensor shape [N, H, D]。
                 k_tensor = flat_k[indices]
                 v_tensor = flat_v[indices]
                 unimportant = _select_unimportant_ids(
@@ -542,6 +667,9 @@ class ZipCacheV3Manager:
 
         返回的 handle 只属于当前请求。radix tree 节点仍保持 compressed 状态，
         后续请求仍然可以继续命中 compressed entry。
+
+        返回 handle.get_matched_indices() shape [materialized_len]。如果 keep_compressed=True，
+        其中 compressed node 对应的部分是临时 new_indices，请求结束后必须释放。
         """
 
         if not self.enabled() or handle.cached_len == 0:
@@ -594,6 +722,7 @@ class ZipCacheV3Manager:
                 self._stats["num_compressed_hits"] += 1
                 self._stats["num_restore_attempts"] += 1
                 new_indices = cache_manager.allocate_token_indices(node.length)
+                # new_indices shape [node.length]，是 restore 目标 normal KV 物理 token index。
                 try:
                     self._restore_entry_to_indices(entry, new_indices)
                 except Exception:
@@ -652,6 +781,12 @@ class ZipCacheV3Manager:
                 return handle
 
     def lock_handle(self, prefix_cache: Any, handle: Any, *, unlock: bool = False) -> bool:
+        """锁定/解锁 v3 wrapper handle 的底层 radix handle。
+
+        返回 True 表示当前 handle 已被 v3 处理，CacheManager 不需要再直接调用
+        prefix_cache.lock_handle(handle)。普通 radix handle 返回 False。
+        """
+
         if isinstance(handle, (_V3MaterializedHandle, _V3OwnedHandle)):
             prefix_cache.lock_handle(handle.base_handle, unlock=unlock)
             return True
@@ -669,6 +804,12 @@ class ZipCacheV3Manager:
         return new_handle
 
     def release_handle_resources(self, handle: Any, cache_manager: Any) -> None:
+        """释放 v3 handle 持有的 temporary restored normal pages。
+
+        handle.temporary_indices shape [num_restored_tokens]，这些 indices 只服务当前请求。
+        函数用 weakref 记录已释放 handle，防止 prefill 失败路径和 finished 路径重复释放。
+        """
+
         if not isinstance(handle, (_V3MaterializedHandle, _V3OwnedHandle)):
             return
         handle_id = id(handle)
@@ -695,6 +836,12 @@ class ZipCacheV3Manager:
         )
 
     def stats(self) -> Dict[str, int | float]:
+        """汇总 ZipCache v3 运行统计。
+
+        返回字段包括 demote/restore 次数、active compressed bytes、compressed pool
+        使用率，以及根据 active_storage_compression_ratio 估算的有效 KV 容量。
+        """
+
         self._update_active_stats()
         stats = dict(self._stats)
         estimated = int(stats["active_compressed_estimated_bytes_4bit"])
@@ -725,10 +872,17 @@ class ZipCacheV3Manager:
         return stats
 
     def log_stats(self) -> None:
+        """如果 v3 启用，则通过 rank0 logger 输出一次 stats。"""
+
         if self.enabled():
             logger.info_rank0("[ZipCacheV3] stats: %s", self.stats())
 
     def maybe_log_stats(self) -> None:
+        """按 zipcache_stats_interval 周期性输出 stats。
+
+        interval<=0 表示关闭周期日志；时间基准使用 time.monotonic()。
+        """
+
         interval = float(self.config.zipcache_stats_interval)
         if interval <= 0:
             return
@@ -738,6 +892,13 @@ class ZipCacheV3Manager:
             self.log_stats()
 
     def _restore_entry_to_indices(self, entry: _CompressedEntry, indices: torch.Tensor) -> None:
+        """把一个 compressed entry 解压回指定 normal KV indices。
+
+        indices shape [N]，N 必须等于 entry.length。对每层：
+        - _dequantize_mixed_gpu(layer_entry.k) 返回 [N, H, D]；
+        - flat_k[indices] 也是 [N, H, D]，可直接赋值。
+        """
+
         indices = indices.to(self.kv_pool.device, non_blocking=True)
         for layer_id, layer_entry in entry.layers.items():
             flat_k = _flatten_layer_cache(self.kv_pool.k_cache(layer_id))
@@ -748,6 +909,8 @@ class ZipCacheV3Manager:
         entry.last_access_time = time.time()
 
     def _free_entry(self, entry_id: int) -> None:
+        """释放一个 compressed entry 及其 pool slice。"""
+
         entry = self.entries.pop(entry_id, None)
         if entry is None:
             return
@@ -758,6 +921,8 @@ class ZipCacheV3Manager:
         self._update_active_stats()
 
     def _free_layers(self, layers: Dict[int, _LayerEntry]) -> None:
+        """释放若干 layer entry 中 K/V important/unimportant 四组 pool slice。"""
+
         for layer_entry in layers.values():
             self.pool.free_part(layer_entry.k.important)
             self.pool.free_part(layer_entry.k.unimportant)
@@ -765,6 +930,8 @@ class ZipCacheV3Manager:
             self.pool.free_part(layer_entry.v.unimportant)
 
     def _update_active_stats(self) -> None:
+        """根据当前 self.entries 重新计算 active bytes 统计。"""
+
         self._stats["active_original_estimated_bytes"] = sum(
             entry.original_bytes for entry in self.entries.values()
         )
@@ -776,6 +943,12 @@ class ZipCacheV3Manager:
         )
 
     def _choose_compressed_pool_bytes(self) -> int:
+        """根据配置选择 compressed pool 容量，单位 byte。
+
+        zipcache_v3_compressed_pool_mb>0 时使用绝对 MB；否则按 normal KV pool
+        bytes * zipcache_v3_compressed_pool_ratio 估算。
+        """
+
         pool_mb = int(getattr(self.config, "zipcache_v3_compressed_pool_mb", 0))
         if pool_mb > 0:
             return pool_mb * 1024 * 1024
@@ -784,9 +957,13 @@ class ZipCacheV3Manager:
         return int(self.original_kv_pool_bytes * ratio)
 
     def _pool_ratio(self, name: str, default: float) -> float:
+        """读取 q4/q2/scale/ids 某类 buffer 的容量比例。"""
+
         return float(getattr(self.config, f"zipcache_v3_{name}_pool_ratio", default))
 
     def _release_temporary_parts(self, cache_manager: Any, parts: List[torch.Tensor]) -> None:
+        """释放 restore 过程中已经分配但最终没有交给请求持有的临时 indices。"""
+
         if not parts:
             return
         indices = torch.cat(parts)
@@ -797,10 +974,17 @@ class ZipCacheV3Manager:
 
 
 def _flatten_layer_cache(cache: torch.Tensor) -> torch.Tensor:
+    """把单层 cache 从 [P, S, H, D] 展平成 [P*S, H, D]。"""
+
     return cache.view(-1, cache.shape[-2], cache.shape[-1])
 
 
 def _estimate_kv_pool_bytes(kv_pool: Any) -> int:
+    """估算 normal KV pool 总字节数。
+
+    单层 K/V 元素数乘以 layer 数和 dtype.itemsize。假设各层 cache shape 相同。
+    """
+
     per_layer = kv_pool.k_cache(0).numel() + kv_pool.v_cache(0).numel()
     return int(per_layer * kv_pool.num_layers * kv_pool.dtype.itemsize)
 
@@ -812,6 +996,12 @@ def _select_unimportant_ids(
     ratio: float,
     protect_recent: int,
 ) -> torch.Tensor:
+    """按 K/V 绝对值均值选择 unimportant token。
+
+    k_tensor/v_tensor shape [N, H, D]；返回 shape [M_unimp]，元素是 [0, N) 内相对位置。
+    protect_recent 会强制最后若干 token 不被选为 unimportant。
+    """
+
     length = k_tensor.shape[0]
     if length <= 1 or ratio <= 0:
         return torch.empty(0, dtype=torch.long, device=k_tensor.device)
@@ -832,6 +1022,11 @@ def _select_unimportant_ids(
 def _split_ids(
     length: int, unimportant_ids: torch.Tensor, device: torch.device
 ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """把 [0, length) token 位置拆成 important/unimportant 两组。
+
+    返回 important_ids shape [M_imp]，unimportant shape [M_unimp]。
+    """
+
     if unimportant_ids.numel() == 0:
         important = torch.arange(length, device=device, dtype=torch.long)
         return important, unimportant_ids.to(device=device, dtype=torch.long)
@@ -851,6 +1046,8 @@ def _quantize_mixed_gpu(
     unimportant_bit: int,
     pool: _V3CompressedPool,
 ) -> _CompressedTensor:
+    """把一个 [N, H, D] 的 K 或 V tensor 做 important/unimportant 混合量化。"""
+
     important_ids, unimportant_ids = _split_ids(x.shape[0], unimportant_ids, x.device)
     important = None
     try:
@@ -874,6 +1071,12 @@ def _quantize_part_gpu(
     bit: int,
     pool: _V3CompressedPool,
 ) -> _QuantizedPart:
+    """量化 x 中 ids 指定的一组 token。
+
+    x shape [N, H, D]；ids shape [M]；selected shape [M, H, D]。
+    每个 [token, head] 独立用 min/step 线性量化 head_dim 维。
+    """
+
     if bit > 4:
         raise ValueError("ZipCacheV3 packed pool supports bit width <= 4")
     ids = ids.to(device=x.device, dtype=torch.long)
@@ -898,6 +1101,8 @@ def _quantize_part_gpu(
 
 
 def _dequantize_mixed_gpu(data: _CompressedTensor, device: torch.device) -> torch.Tensor:
+    """把 important/unimportant 两部分拼回 shape [N, H, D] 的原 dtype tensor。"""
+
     out = torch.empty(data.shape, dtype=data.dtype, device=device)
     _dequantize_part_gpu_into(out, data.important, data.dtype)
     _dequantize_part_gpu_into(out, data.unimportant, data.dtype)
@@ -907,6 +1112,11 @@ def _dequantize_mixed_gpu(data: _CompressedTensor, device: torch.device) -> torc
 def _dequantize_part_gpu_into(
     out: torch.Tensor, part: _QuantizedPart, dtype: torch.dtype
 ) -> None:
+    """把一个 QuantizedPart 写回 out[part.ids]。
+
+    out shape [N, H, D]；unpack 后 q shape [M, H, D]；part.ids shape [M]。
+    """
+
     if part.ids.numel() == 0:
         return
     q = _unpack_lowbit(part.q, part.storage_bit, part.logical_numel, part.q_shape)
@@ -914,7 +1124,11 @@ def _dequantize_part_gpu_into(
 
 
 def _pack_lowbit(q: torch.Tensor, storage_bit: int) -> torch.Tensor:
-    """把 uint8 量化值按 2bit 或 4bit 打包到 uint8 buffer。"""
+    """把 uint8 量化值按 2bit 或 4bit 打包到 uint8 buffer。
+
+    输入 q 可以是任意 shape，函数先展平成 [logical_numel]。
+    返回 shape [ceil(logical_numel / values_per_byte)]，其中 values_per_byte=4(2bit) 或 2(4bit)。
+    """
 
     if storage_bit not in (2, 4):
         raise ValueError(f"Unsupported packed bit width: {storage_bit}")
@@ -939,7 +1153,11 @@ def _unpack_lowbit(
     logical_numel: int,
     shape: Tuple[int, ...],
 ) -> torch.Tensor:
-    """把 2bit/4bit packed uint8 buffer 解包成原量化值 tensor。"""
+    """把 2bit/4bit packed uint8 buffer 解包成原量化值 tensor。
+
+    packed shape [ceil(logical_numel / values_per_byte)]；
+    返回 shape 等于 q_shape，通常是 [M, H, D]。
+    """
 
     if storage_bit not in (2, 4):
         raise ValueError(f"Unsupported packed bit width: {storage_bit}")

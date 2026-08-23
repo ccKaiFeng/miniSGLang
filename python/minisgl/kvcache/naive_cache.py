@@ -15,6 +15,11 @@ class NaiveCacheHandle(BaseCacheHandle):
     empty_tensor: torch.Tensor  # should be set by NaivePrefixCache
 
     def __init__(self):
+        """创建 cached_len=0 的 handle。
+
+        naive cache 永远不复用跨请求 prefix，因此 matched indices 总是空。
+        """
+
         super().__init__(cached_len=0)
 
     def get_matched_indices(self) -> torch.Tensor:

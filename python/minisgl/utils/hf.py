@@ -14,6 +14,8 @@ class DisabledTqdm(tqdm):
     """禁用 tqdm 进度条的 helper，用于安静下载。"""
 
     def __init__(self, *args, **kwargs):
+        """强制 disable=True，并忽略 huggingface_hub 传入的 name 参数。"""
+
         kwargs.pop("name", None)
         kwargs["disable"] = True
         super().__init__(*args, **kwargs)

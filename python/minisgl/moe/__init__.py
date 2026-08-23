@@ -17,7 +17,9 @@ logger = init_logger(__name__)
 class MoeBackendCreator(Protocol):
     """MoE backend 创建函数的类型约束。"""
 
-    def __call__(self) -> BaseMoeBackend: ...
+    def __call__(self) -> BaseMoeBackend:
+        """创建一个 BaseMoeBackend 实例。"""
+        ...
 
 
 SUPPORTED_MOE_BACKENDS = Registry[MoeBackendCreator]("MoE Backend")

@@ -25,7 +25,11 @@ class RotaryEmbedding(StateLessOP):
         base: float,
         post_process: None | Callable[[torch.Tensor], torch.Tensor] = None,
     ) -> None:
-        """预计算 cos/sin cache。"""
+        """预计算 cos/sin cache。
+
+        cos/sin cache shape [max_position_embeddings, head_size]：
+        前半是 cos，后半是 sin。forward 时按 positions shape [T] 取对应行。
+        """
 
         super().__init__()
         self.head_size = head_size
@@ -51,7 +55,11 @@ class RotaryEmbedding(StateLessOP):
         query: torch.Tensor,
         key: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """按 positions 对 query/key 原地应用 RoPE。"""
+        """按 positions 对 query/key 原地应用 RoPE。
+
+        positions shape [T]；query/key 可以是 [T, heads*head_size] 的展平行向量。
+        kernel 会按 head_size 分组旋转，返回的 tensor 与输入 shape 相同。
+        """
 
         self.apply_rope_with_cos_sin_cache_inplace(
             positions=positions,
@@ -86,6 +94,12 @@ def _get_rope(
             original_max_position: int = rope_scaling["original_max_position_embeddings"]
 
             def post_process(inv_freq: torch.Tensor) -> torch.Tensor:
+                """按 Llama3 rope scaling 调整 inv_freq。
+
+                inv_freq shape [rotary_dim/2]；低频部分按 scaling_factor 拉伸，
+                高频部分保持不变，中间频段平滑过渡。
+                """
+
                 # no smooth if low_freq_factor == high_freq_factor
                 wave_len = 2 * math.pi / inv_freq
                 if low_freq_factor == high_freq_factor:
@@ -110,12 +124,24 @@ def _get_rope(
             orig_max_pos: int = rope_scaling["original_max_position_embeddings"]
 
             def _find_correction_dim(num_rotations: float) -> float:
+                """计算 Yarn 频率 ramp 的边界维度。
+
+                num_rotations 表示在原始最大上下文内期望的旋转圈数，返回值是
+                inv_freq 维度上的浮点位置，后续 floor/ceil 成 low/high。
+                """
+
                 return rotary_dim * math.log(orig_max_pos / (num_rotations * 2 * math.pi)) / (2 * math.log(base))
 
             low = max(math.floor(_find_correction_dim(beta_fast)), 0)
             high = min(math.ceil(_find_correction_dim(beta_slow)), rotary_dim // 2 - 1)
 
             def post_process(inv_freq: torch.Tensor) -> torch.Tensor:
+                """按 Yarn ramp 对 inv_freq 做位置外推缩放。
+
+                inv_freq shape [rotary_dim/2]；low/high 之间逐步从原频率过渡到
+                inv_freq/factor，从而支持更长上下文。
+                """
+
                 ramp = torch.clamp(
                     (torch.arange(rotary_dim // 2, dtype=torch.float32) - low) / max(high - low, 1),
                     0, 1,

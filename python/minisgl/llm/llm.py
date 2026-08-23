@@ -98,6 +98,20 @@ class LLM(Scheduler):
         prompts: List[str] | List[List[int]],
         sampling_params: List[SamplingParams] | SamplingParams,
     ) -> List[Dict[str, str | List[int]]]:
+        """离线批量生成。
+
+        参数：
+        - prompts：字符串列表或已 tokenized 的 input id 列表；每个请求一项；
+        - sampling_params：单个 SamplingParams 会广播到所有 prompt，也可逐请求传入列表。
+
+        返回：
+        - List[dict]，长度等于 prompts；
+        - 每项包含 text: 解码后的输出字符串，token_ids: 输出 token id 列表。
+
+        内部流程是把请求放入 pending_requests，然后调用 Scheduler.run_forever()；
+        当 offline_receive_msg() 发现没有待处理请求时抛 RequestAllFinished 退出循环。
+        """
+
         self.pending_requests = []
         self.status_map = {}
         self.counter = 0

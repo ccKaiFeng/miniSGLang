@@ -10,6 +10,13 @@ class TableManager:
     """管理请求槽位和 token/page 表。"""
 
     def __init__(self, max_running_reqs: int, page_table: torch.Tensor) -> None:
+        """初始化 table slot 管理器。
+
+        max_running_reqs 是最多同时运行请求数；page_table shape
+        [max_running_reqs+1, aligned_max_seq_len]，其中额外一行通常给 dummy request 使用。
+        token_pool 与 page_table 同 shape，用来保存每个请求槽位上的 token id。
+        """
+
         self._max_running_reqs = max_running_reqs
 
         # 空闲槽位列表。槽位编号范围是 [0, max_running_reqs)。

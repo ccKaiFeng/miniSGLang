@@ -34,6 +34,15 @@ class CacheManager:
         type: str,
         zipcache_manager=None,
     ):
+        """创建 scheduler 侧 cache manager。
+
+        参数：
+        - num_pages/page_size：normal KV pool 的 page 数和每页 token 数；
+        - page_table：全局物理地址表，shape [max_running_req+1, aligned_max_seq_len]；
+        - type：prefix cache 类型，例如 "radix" 或 "naive"；
+        - zipcache_manager：可选 ZipCacheV3Manager，用于 compressed node restore/demote。
+        """
+
         # The `_free_slots` follows a page-aligned manner. For example, if page_size = 2,
         # the `_free_slots` may look like [0, 2, 4, 6, ...], and each slot represents a page.
         device = page_table.device
@@ -48,6 +57,8 @@ class CacheManager:
         self.num_pages = num_pages
 
         # page_table[table_idx, token_pos] = KV cache 物理 token index。
+        # shape [max_running_req + 1, aligned_max_seq_len]，dtype int32，device 为当前 GPU。
+        # token_pos 是请求内部逻辑位置；表项是 normal KV pool 展平后的 token index。
         self.page_table = page_table
         self.page_size = page_size
         self.zipcache_manager = zipcache_manager
@@ -135,6 +146,9 @@ class CacheManager:
 
         根据每个 req 的 cached_len 和 device_len 判断哪些 token 位置还没有 page，
         然后统一分配 page，并写入 page_table。
+
+        对每个 req，只为 [cached_len, device_len) 覆盖到的新 page 分配空间。
+        page_table 最终写入的区间是 [first_page*page_size, last_page*page_size)。
         """
 
         needed_pages = 0
@@ -172,6 +186,9 @@ class CacheManager:
         #                                           We should free it if the request has finished.
         insert_ids = req.input_ids[: req.cached_len]
         page_indices = self.page_table[req.table_idx, : req.cached_len]
+        # insert_ids shape [cached_len]，CPU token id；
+        # page_indices shape [cached_len]，GPU int32 normal KV 物理 token index。
+        # 两者按同一逻辑 token 位置一一对应。
         old_handle = req.cache_handle
 
         # 尝试把 [0, req.cached_len) 插入 prefix cache。
@@ -247,6 +264,8 @@ class CacheManager:
         """
 
         def lazy_free(indices: torch.Tensor) -> None:
+            """把待释放 token indices 延迟记录为 page 起点列表。"""
+
             # indices 是 token index，按 page_size 取每页起点。
             lazy_free_list.append(indices[:: self.page_size])
 
@@ -261,7 +280,11 @@ class CacheManager:
             self.free_slots = torch.cat([self.free_slots] + lazy_free_list)
 
     def _allocate(self, needed_pages: int) -> torch.Tensor:
-        """分配 needed_pages 个 page，不够时从 prefix cache 驱逐。"""
+        """分配 needed_pages 个 page，不够时从 prefix cache 驱逐。
+
+        返回 shape [needed_pages]，每个元素是 page 的起始物理 token index，
+        例如 page_size=4 时返回 [0, 4, 8, ...] 这种 page-aligned 值。
+        """
 
         if needed_pages > (free_pages := len(self.free_slots)):
             # free page 不够，驱逐可驱逐的 prefix cache。
@@ -275,13 +298,21 @@ class CacheManager:
         return allocated
 
     def _free(self, indices: torch.Tensor) -> None:
-        """释放一段 token indices 对应的 page。"""
+        """释放一段 token indices 对应的 page。
+
+        indices shape [N]，通常 N 是 page_size 的整数倍；函数只取 indices[::page_size]
+        作为 page 起点放回 free_slots。
+        """
 
         if len(indices) > 0:
             self.free_slots = torch.cat([self.free_slots, indices[:: self.page_size]])
 
     def allocate_token_indices(self, length: int) -> torch.Tensor:
-        """为 restore 分配 length 个 token 位置，并返回可直接写入 page_table 的 indices。"""
+        """为 restore 分配 length 个 token 位置，并返回可直接写入 page_table 的 indices。
+
+        返回 shape [length]，元素是连续 page 展开后的物理 token index。
+        length 不一定 page 对齐，最后一个 page 的剩余 token 会随 page 一起占用。
+        """
 
         if length <= 0:
             return torch.empty(0, dtype=torch.int32, device=self.device)
@@ -289,7 +320,11 @@ class CacheManager:
         return self._page_to_token(self._allocate(needed_pages))[:length]
 
     def _page_to_token(self, pages: torch.Tensor) -> torch.Tensor:
-        """把 page 起始 index 展开成 token index。"""
+        """把 page 起始 index 展开成 token index。
+
+        pages shape [num_pages] -> 返回 shape [num_pages * page_size]。
+        page_size=4 且 pages=[8] 时返回 [8, 9, 10, 11]。
+        """
 
         if self.page_size == 1:
             return pages
@@ -310,6 +345,9 @@ def _write_page_table(
     - table_idx：请求槽位；
     - first_page：从哪个逻辑 page 开始写；
     - last_page：写到哪个逻辑 page 之前。
+
+    allocated shape [needed_tokens]，其中 needed_tokens 是所有新分配 page 展开后的 token 数。
+    table_idx_host/positions_host shape 也都是 [needed_tokens]，用于一次性高级索引写表。
     """
 
     needed_tokens = len(allocated)

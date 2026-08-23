@@ -16,7 +16,10 @@ if TYPE_CHECKING:
 
 
 def silu_and_mul(x: torch.Tensor, out: torch.Tensor | None = None):
-    """执行 SiLU(x 前半) * (x 后半) 的 fused 计算。"""
+    """执行 SiLU(x 前半) * (x 后半) 的 fused 计算。
+
+    x 最后一维必须是 2*D，返回 shape 等于 x 去掉后一半后的形状，即 [..., D]。
+    """
 
     from flashinfer import silu_and_mul
 
@@ -24,7 +27,10 @@ def silu_and_mul(x: torch.Tensor, out: torch.Tensor | None = None):
 
 
 def gelu_and_mul(x: torch.Tensor, out: torch.Tensor | None = None):
-    """执行 GELU(x 前半) * (x 后半) 的 fused 计算。"""
+    """执行 GELU(x 前半) * (x 后半) 的 fused 计算。
+
+    x 最后一维必须是 2*D，返回 shape [..., D]。
+    """
 
     from flashinfer import gelu_and_mul
 

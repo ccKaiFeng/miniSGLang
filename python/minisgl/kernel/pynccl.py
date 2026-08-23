@@ -19,12 +19,20 @@ if TYPE_CHECKING:
     from tvm_ffi import Module
 
     class PyNCCLCommunicator:
+        """PyNCCL FFI object 的 typing-only 协议描述。"""
+
         @abstractmethod
-        def all_reduce(self, input: torch.Tensor, op: Literal["sum"]) -> None: ...
+        def all_reduce(self, input: torch.Tensor, op: Literal["sum"]) -> None:
+            """对 input 做原地 all-reduce，目前只声明 sum。"""
+            ...
         @abstractmethod
-        def all_gather(self, output: torch.Tensor, input: torch.Tensor) -> None: ...
+        def all_gather(self, output: torch.Tensor, input: torch.Tensor) -> None:
+            """把各 rank 的 input gather 到 output。"""
+            ...
         @abstractmethod
-        def get_buffer(self) -> int: ...
+        def get_buffer(self) -> int:
+            """返回底层通信 staging buffer 的地址。"""
+            ...
 
 else:
     PyNCCLCommunicator = Any
@@ -45,7 +53,11 @@ def _get_pynccl_wrapper_cls():
 
     @tvm_ffi.register_object("minisgl.NCCLWrapper")
     class PyNCCLImpl(tvm_ffi.Object):
+        """TVM FFI 注册的 NCCLWrapper Python 类。"""
+
         def __init__(self, *args):
+            """把构造参数转交给 FFI __ffi_init__。"""
+
             self.__ffi_init__(*args)
 
     return PyNCCLImpl

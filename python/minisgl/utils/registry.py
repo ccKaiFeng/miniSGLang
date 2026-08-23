@@ -12,6 +12,11 @@ class Registry(Generic[T]):
     """名字到对象/创建函数的映射表。"""
 
     def __init__(self, type: str):
+        """创建一个 registry。
+
+        type 只用于错误信息，例如 "Attention Backend" 或 "Cache Manager"。
+        """
+
         self._registry = {}
         self._type = type
 
@@ -22,6 +27,8 @@ class Registry(Generic[T]):
             raise KeyError(f"{self._type} '{name}' is already registered.")
 
         def decorator(item: T) -> None:
+            """真正执行注册的装饰器函数。"""
+
             self._registry[name] = item
 
         return decorator

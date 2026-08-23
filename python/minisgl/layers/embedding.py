@@ -41,7 +41,11 @@ class VocabParallelEmbedding(BaseOP):
 
     @nvtx_annotate("Embedding")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """把 token id 转成 hidden vector。"""
+        """把 token id 转成 hidden vector。
+
+        x shape [T]，元素是全局 vocab token id；返回 shape [T, embedding_dim]。
+        TP>1 时每个 rank 只对自己 vocab_range 内的 token 产生非零向量，最后 all_reduce 合并。
+        """
 
         from minisgl.kernel import indexing
 
@@ -113,6 +117,10 @@ class ParallelLMHead(VocabParallelEmbedding):
 
         prefill 阶段只需要每个请求最后一个 token 的 logits；decode 阶段每个
         请求本来就只有一个新 token。
+
+        输入 x shape [T, hidden_size]。prefill 时先 gather 每个请求最后一个
+        query，变成 [batch.size, hidden_size]；decode 时 T=batch.size。
+        输出 logits shape [batch.size, vocab_size]。
         """
 
         ctx = get_global_ctx()

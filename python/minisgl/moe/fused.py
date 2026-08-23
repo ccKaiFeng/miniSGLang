@@ -21,7 +21,11 @@ def fused_topk(
     renormalize: bool,
     num_token_non_padded: torch.Tensor | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """根据 router logits 选择每个 token 的 top-k expert。"""
+    """根据 router logits 选择每个 token 的 top-k expert。
+
+    hidden_states shape [M, hidden_size]；gating_output shape [M, E]。
+    返回 topk_weights/topk_ids，shape 都是 [M, topk]。
+    """
 
     from sgl_kernel import topk_softmax
 
@@ -41,7 +45,13 @@ def fused_topk(
 def moe_align_block_size(
     topk_ids: torch.Tensor, block_size: int, num_experts: int
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """把 token 按 expert 分组，并 padding 到 block_size 对齐。"""
+    """把 token 按 expert 分组，并 padding 到 block_size 对齐。
+
+    topk_ids shape [M, topk]。返回：
+    - sorted_ids shape [max_num_tokens_padded]；
+    - expert_ids shape [max_num_m_blocks]；
+    - num_tokens_post_pad shape [1]。
+    """
 
     from sgl_kernel import moe_align_block_size as sgl_moe_align_block_size
 
@@ -71,7 +81,10 @@ def get_default_config(
     K: int,
     topk: int,
 ) -> Dict[str, int]:
-    """根据矩阵尺寸返回一组默认 Triton block 配置。"""
+    """根据矩阵尺寸返回一组默认 Triton block 配置。
+
+    M 是 token 数，E 是 expert 数，N/K 是 expert GEMM 的输出/输入维度，topk 是每 token expert 数。
+    """
 
     config = {
         "BLOCK_SIZE_M": 64,
@@ -95,6 +108,17 @@ def try_get_optimal_moe_config(
     top_k: int,
     M: int,
 ) -> Dict[str, int]:
+    """为当前 MoE batch 选择 Triton kernel block 配置。
+
+    输入：
+    - w1_shape 通常是 [E, 2*I_local, hidden_size]；
+    - w2_shape 通常是 [E, hidden_size, I_local]；
+    - top_k 是每个 token 选择的 expert 数；
+    - M 是当前 token 数。
+
+    当前实现返回规则化默认配置，接口保留给后续按硬件/shape 调优。
+    """
+
     E, _, N = w2_shape
     config = get_default_config(M, E, N, w1_shape[2], top_k)
     return config
@@ -109,6 +133,15 @@ def fused_experts_impl(
     activation: str = "silu",
     apply_router_weight_on_input: bool = False,
 ) -> torch.Tensor:
+    """执行 fused expert 两段 GEMM。
+
+    hidden_states shape [M, hidden_size]；
+    w1 shape [E, 2*I_local, hidden_size]；
+    w2 shape [E, hidden_size, I_local]；
+    topk_weights/topk_ids shape [M, topk]；
+    返回 shape [M, hidden_size]。
+    """
+
     from minisgl.kernel import fused_moe_kernel_triton, moe_sum_reduce_triton
     from minisgl.layers import gelu_and_mul, silu_and_mul
 
@@ -204,6 +237,8 @@ def fused_experts_impl(
 
 
 class FusedMoe(BaseMoeBackend):
+    """使用 sgl-kernel/Triton fused kernel 的 MoE backend。"""
+
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -215,6 +250,8 @@ class FusedMoe(BaseMoeBackend):
         activation: str = "silu",
         apply_router_weight_on_input: bool = False,
     ) -> torch.Tensor:
+        """完整 MoE forward：top-k 选择 -> expert GEMM -> top-k 加权求和。"""
+
         topk_weights, topk_ids = fused_topk(
             hidden_states=hidden_states,
             gating_output=gating_output,

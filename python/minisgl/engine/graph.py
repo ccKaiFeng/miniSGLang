@@ -33,9 +33,11 @@ class GraphCaptureBuffer:
     解决办法是预先分配固定 buffer，每次把 batch 数据 copy 到 buffer 里。
     """
 
+    # input_ids/out_loc/positions shape [graph_bs]，decode graph 中每个请求只有 1 个 query token。
     input_ids: torch.Tensor
     out_loc: torch.Tensor
     positions: torch.Tensor
+    # logits shape [graph_bs, vocab_size]，padding dummy 请求的 logits 后续会被切掉。
     logits: torch.Tensor
 
     @classmethod
@@ -50,7 +52,10 @@ class GraphCaptureBuffer:
         )
 
     def set_batch(self, batch: Batch) -> None:
-        """让 batch 的输入字段指向 capture buffer。"""
+        """让 batch 的输入字段指向 capture buffer。
+
+        capture 阶段只记录固定地址的 tensor，所以这里把 batch 字段替换成 buffer slice。
+        """
 
         _slice = slice(batch.padded_size)
         batch.input_ids = self.input_ids[_slice]
@@ -58,7 +63,10 @@ class GraphCaptureBuffer:
         batch.positions = self.positions[_slice]
 
     def copy_from(self, batch: Batch) -> None:
-        """replay 前把真实 batch 数据拷贝进固定 buffer。"""
+        """replay 前把真实 batch 数据拷贝进固定 buffer。
+
+        batch.padded_size 必须等于当前 graph_bs；三个输入 tensor shape 都是 [padded_size]。
+        """
 
         _slice = slice(batch.padded_size)
         self.input_ids[_slice] = batch.input_ids
@@ -192,7 +200,11 @@ class GraphRunner:
         return batch.is_decode and batch.size <= self.max_graph_bs
 
     def replay(self, batch: Batch) -> torch.Tensor:
-        """用已 capture 的 graph 执行一次 decode forward。"""
+        """用已 capture 的 graph 执行一次 decode forward。
+
+        输入 batch 已被 pad 到某个 graph_bs。返回 shape [batch.size, vocab_size]，
+        只包含真实请求，不包含 dummy padding。
+        """
 
         assert self.can_use_cuda_graph(batch)
 

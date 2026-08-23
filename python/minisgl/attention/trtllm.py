@@ -38,6 +38,11 @@ class TRTLLMMetadata(BaseAttnMetadata):
     page_table: torch.Tensor
 
     def get_last_indices(self, bs: int) -> torch.Tensor:
+        """返回每个真实请求最后一个 query token 的扁平位置。
+
+        cu_seqlens_q shape [padded_bs + 1]；取 [1:1+bs]-1 得到 shape [bs]。
+        """
+
         return self.cu_seqlens_q[1 : 1 + bs] - 1
 
 
@@ -45,6 +50,12 @@ class TensorRTLLMBackend(BaseAttnBackend):
     """基于 TensorRT-LLM FMHA 的 attention backend。"""
 
     def __init__(self, config: ModelConfig):
+        """初始化 TensorRT-LLM attention backend。
+
+        config 提供 head_dim 等静态模型参数；KV cache/page_size 从 global context 获取。
+        workspace_buffer 是 TensorRT-LLM FMHA kernel 的临时工作区，dtype uint8。
+        """
+
         ctx = get_global_ctx()
         self.config = config
         self.kvcache = ctx.kv_cache
@@ -60,6 +71,13 @@ class TensorRTLLMBackend(BaseAttnBackend):
     def forward(
         self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
     ) -> torch.Tensor:
+        """写入本层新 KV，并按 prefill/decode 调用 TensorRT-LLM kernel。
+
+        q shape [T_q, H_q_local, D]；k/v shape [T_new, H_kv_local, D] 或等价展平；
+        batch.out_loc shape [T_new]，指向 normal KV pool 的物理 token index。
+        返回 shape [T_q, H_q_local, D]。
+        """
+
         from flashinfer.decode import trtllm_batch_decode_with_kv_cache
         from flashinfer.prefill import trtllm_batch_context_with_kv_cache
 
@@ -100,6 +118,13 @@ class TensorRTLLMBackend(BaseAttnBackend):
             )
 
     def prepare_metadata(self, batch: Batch) -> None:
+        """把 Batch 转成 TensorRT-LLM FMHA metadata。
+
+        seqlens_q[i]=req.extend_len，seqlens_k[i]=req.device_len。
+        page_table shape [padded_bs, ceil(max_seqlen_k/page_size)]，page_size>1 时
+        从全局物理 token index 转为 page id。
+        """
+
         reqs = batch.padded_reqs
 
         padded_size = len(reqs)
@@ -140,6 +165,12 @@ class TensorRTLLMBackend(BaseAttnBackend):
         )
 
     def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:
+        """为 decode CUDA Graph 预分配固定 metadata buffer。
+
+        max_seq_len 是最大可见上下文 token 数；TRT-LLM block table 以 page 为单位，
+        因此 capture.page_table 的列数是 max_seq_len // page_size。
+        """
+
         assert self.capture is None, "Capture already initialized."
         max_bs = max(bs_list)
         capture = TRTLLMCaptureData.create(
@@ -150,6 +181,8 @@ class TensorRTLLMBackend(BaseAttnBackend):
         self.capture_bs = sorted(bs_list)
 
     def prepare_for_capture(self, batch: Batch) -> None:
+        """capture decode graph 前，让 batch metadata 指向固定 capture buffer。"""
+
         assert (bs := batch.size) in self.capture_bs and self.capture
         capture = self.capture
         metadata = TRTLLMMetadata(
@@ -163,6 +196,11 @@ class TensorRTLLMBackend(BaseAttnBackend):
         batch.attn_metadata = metadata
 
     def prepare_for_replay(self, batch: Batch) -> None:
+        """replay 前拷贝本次 batch 的动态长度和 page_table。
+
+        只覆盖当前 table_len 列，capture buffer 剩余列保持预分配内容。
+        """
+
         metadata, bs = batch.attn_metadata, batch.padded_size
         assert isinstance(metadata, TRTLLMMetadata)
         assert self.capture is not None and bs in self.capture_bs

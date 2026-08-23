@@ -14,6 +14,8 @@ class BaseEnv:
     """环境变量项的基类。"""
 
     def _init(self, name: str) -> None:
+        """由 ENV 初始化时调用，用完整环境变量名填充值。"""
+
         raise NotImplementedError
 
 
@@ -24,6 +26,8 @@ class EnvVar(BaseEnv, Generic[T]):
     """带类型转换函数的环境变量封装。"""
 
     def __init__(self, default_value: T, fn: Callable[[str], T]):
+        """保存默认值和字符串到目标类型的转换函数。"""
+
         self.value = default_value
         self.fn = fn
         super().__init__()
@@ -39,9 +43,13 @@ class EnvVar(BaseEnv, Generic[T]):
                 pass
 
     def __bool__(self):
+        """按当前 value 的真假值参与 if 判断。"""
+
         return self.value
 
     def __str__(self):
+        """返回当前 value 的字符串形式，方便日志打印。"""
+
         return str(self.value)
 
 

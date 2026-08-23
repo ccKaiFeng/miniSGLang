@@ -30,12 +30,19 @@ class FACaptureData(BaseCaptureData):
 class FAMetadata(BaseAttnMetadata):
     """FlashAttention 每个 batch 的元数据。"""
 
+    # cu_seqlens_* shape [padded_bs + 1]，dtype int32，表示 ragged batch 的前缀和。
+    # 对第 i 个请求：
+    #   q 范围是 [cu_seqlens_q[i], cu_seqlens_q[i+1])；
+    #   k 范围是 [cu_seqlens_k[i], cu_seqlens_k[i+1])。
     cu_seqlens_k: torch.Tensor
     cu_seqlens_q: torch.Tensor
+    # cache_seqlens shape [padded_bs]，每个元素是 req.device_len。
     cache_seqlens: torch.Tensor
     max_seqlen_k: int
     max_seqlen_q: int
 
+    # page_table shape [padded_bs, ceil(max_seqlen_k / page_size)]。
+    # FlashAttention 需要 page id；page_size>1 时由 global raw token index 除以 page_size 得到。
     page_table: torch.Tensor
 
     def get_last_indices(self, bs: int) -> torch.Tensor:
@@ -48,6 +55,12 @@ class FlashAttentionBackend(BaseAttnBackend):
     """基于 FlashAttention 的 attention backend。"""
 
     def __init__(self, config: ModelConfig):
+        """初始化 FlashAttention backend。
+
+        config 提供模型 head 数、head_dim 等静态结构信息；KV cache/page_size 从
+        global context 读取。capture 相关字段默认为空，只有开启 CUDA Graph 时才填充。
+        """
+
         ctx = get_global_ctx()
         self.config = config
         self.kvcache = ctx.kv_cache
@@ -61,6 +74,13 @@ class FlashAttentionBackend(BaseAttnBackend):
     def forward(
         self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
     ) -> torch.Tensor:
+        """写入本层新 K/V，然后调用 FlashAttention paged KV kernel。
+
+        q shape [T_q, H_q_local, D]；k/v shape [T_new, H_kv_local*D]
+        或等价展平行向量，写入 KV cache 后按 [physical_token, H_kv_local, D] 读取；
+        返回 shape [T_q, H_q_local, D]。
+        """
+
         metadata = batch.attn_metadata
         assert isinstance(metadata, FAMetadata)
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
@@ -78,6 +98,12 @@ class FlashAttentionBackend(BaseAttnBackend):
         )
 
     def prepare_metadata(self, batch: Batch) -> None:
+        """把 Batch 的请求长度和 page_table 转成 FlashAttention metadata。
+
+        padded_size = len(batch.padded_reqs)，可能大于真实 batch.size。
+        seqlens_q[i] = req.extend_len；seqlens_k[i] = req.device_len。
+        """
+
         reqs = batch.padded_reqs
 
         padded_size = len(reqs)
@@ -118,6 +144,13 @@ class FlashAttentionBackend(BaseAttnBackend):
         )
 
     def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:
+        """为 decode CUDA Graph 准备固定大小的 FA metadata buffer。
+
+        max_seq_len 是单请求最大 device_len；FA page_table 以 page 为单位，
+        因此第二维长度是 max_seq_len // page_size。
+        bs_list 是允许 capture/replay 的 batch size 列表。
+        """
+
         assert self.capture is None, "Capture already initialized."
         max_bs = max(bs_list)
         capture = FACaptureData.create(max_bs, max_seq_len // self.page_size, self.kvcache.device)
@@ -126,6 +159,12 @@ class FlashAttentionBackend(BaseAttnBackend):
         self.capture_bs = sorted(bs_list)
 
     def prepare_for_capture(self, batch: Batch) -> None:
+        """capture decode graph 前，把 batch metadata 绑定到固定 capture buffer。
+
+        batch 必须是 decode 阶段，真实 batch size 必须在 capture_bs 中。
+        这里不拷贝动态数据，只构造指向 capture buffer slice 的 FAMetadata。
+        """
+
         assert (bs := batch.size) in self.capture_bs and self.capture
         capture = self.capture
         metadata = FAMetadata(
@@ -139,6 +178,12 @@ class FlashAttentionBackend(BaseAttnBackend):
         batch.attn_metadata = metadata
 
     def prepare_for_replay(self, batch: Batch) -> None:
+        """CUDA Graph replay 前，把本次 batch 的长度和 page_table 拷入固定 buffer。
+
+        metadata.page_table shape [bs, table_len]；capture.page_table 预分配到最大长度，
+        replay 前只覆盖当前请求实际需要的前 table_len 列。
+        """
+
         metadata, bs = batch.attn_metadata, batch.padded_size
         assert isinstance(metadata, FAMetadata)
         assert self.capture is not None and bs in self.capture_bs
@@ -167,6 +212,18 @@ def _fa_sgl_impl(
     pack_gqa: bool | None = None,  # Can be tuned for speed
     causal: bool = True,
 ) -> torch.Tensor:
+    """调用 sgl-kernel FlashAttention paged KV kernel。
+
+    输入维度：
+    - q shape [T_q, H_q_local, D]；
+    - k_cache/v_cache shape [num_pages, page_size, H_kv_local, D]；
+    - page_table shape [padded_bs, max_num_pages]，元素是 page id；
+    - cache_seqlens shape [padded_bs]，每个请求当前可见 KV token 数；
+    - cu_seqlens_q/cu_seqlens_k shape [padded_bs + 1]，ragged batch 前缀和。
+
+    返回 shape [T_q, H_q_local, D]。这个函数只做 Python wrapper，不改变 KV cache。
+    """
+
     try:
         from sgl_kernel.flash_attn import flash_attn_with_kvcache
     except ImportError as e:

@@ -62,14 +62,19 @@ class PrefillAdder:
     table_manager: TableManager
 
     def _try_allocate_one(self, req: PendingReq) -> Tuple[BaseCacheHandle, int] | None:
-        """尝试为一个新请求分配 table slot 和 prefix cache handle。"""
+        """尝试为一个新请求分配 table slot 和 prefix cache handle。
+
+        req.input_ids 是 CPU tensor，shape [input_len]。如果 prefix 命中 cached_len>0，
+        会把前 cached_len 个 token id 写入 token_pool[table_idx, :cached_len]，
+        并把 handle.get_matched_indices() 写入 page_table[table_idx, :cached_len]。
+        """
 
         if self.table_manager.available_size == 0:
             return None
 
-        # TODO: consider host cache match case
         # 查询 prefix cache，看看 prompt 前缀是否已经有 KV cache 可复用。
-        handle = self.cache_manager.match_req(req).cuda_handle
+        match_result = self.cache_manager.match_req(req)
+        handle = match_result.cuda_handle
         cached_len = handle.cached_len
 
         # TODO: better estimate policy
@@ -109,7 +114,12 @@ class PrefillAdder:
         table_idx: int,
         cached_len: int,
     ) -> Req:
-        """把一个 pending request 转成 Req/ChunkedReq，并写入本轮 token。"""
+        """把一个 pending request 转成 Req/ChunkedReq，并写入本轮 token。
+
+        写入 token_pool 的区间是 [cached_len, cached_len + chunk_size)，
+        chunk_size <= token_budget。返回的 Req.input_ids shape 是
+        [cached_len + chunk_size]，如果仍小于完整 prompt 长度则返回 ChunkedReq。
+        """
 
         remain_len = pending_req.input_len - cached_len
 
@@ -185,7 +195,11 @@ class PrefillManager:
         self.pending_list.append(PendingReq(req.uid, req.input_ids, req.sampling_params))
 
     def schedule_next_batch(self, prefill_budget: int) -> Batch | None:
-        """根据 prefill_budget 选择下一批要 prefill 的请求。"""
+        """根据 prefill_budget 选择下一批要 prefill 的请求。
+
+        prefill_budget 单位是 token，限制本轮所有 req.extend_len 之和。
+        返回 Batch.phase="prefill"，其中每个 Req 可能是真请求，也可能是 ChunkedReq。
+        """
 
         if len(self.pending_list) == 0:
             return None

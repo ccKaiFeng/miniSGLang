@@ -38,7 +38,11 @@ class _LinearTPImpl(BaseOP):
         self.bias = torch.empty(local_osize) if has_bias else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """执行本 rank 上的线性计算。"""
+        """执行本 rank 上的线性计算。
+
+        x shape [T, local_input_size] 或 [..., local_input_size]；
+        返回 shape [T, local_output_size] 或 [..., local_output_size]。
+        """
 
         return F.linear(x, self.weight, self.bias)
 
@@ -52,6 +56,12 @@ class LinearReplicated(_LinearTPImpl):
         output_size: int,
         has_bias: bool,
     ):
+        """创建 replicated linear。
+
+        input_size/output_size 是完整模型维度；每个 TP rank 都保存完整
+        weight shape [output_size, input_size]，输出也不需要通信合并。
+        """
+
         super().__init__(
             full_isize=input_size,
             full_osize=output_size,
@@ -62,7 +72,10 @@ class LinearReplicated(_LinearTPImpl):
 
 
 class LinearColParallelMerged(_LinearTPImpl):
-    """按输出维切分的 merged 线性层，常用于 MLP 的 gate/up 合并投影。"""
+    """按输出维切分的 merged 线性层，常用于 MLP 的 gate/up 合并投影。
+
+    输入 shape [T, hidden_size]；输出 shape [T, sum(output_sizes)/tp_size]。
+    """
 
     def __init__(
         self,
@@ -70,6 +83,13 @@ class LinearColParallelMerged(_LinearTPImpl):
         output_sizes: List[int],
         has_bias: bool,
     ):
+        """创建 column-parallel merged linear。
+
+        input_size 是完整 hidden_size；output_sizes 是多个逻辑输出投影的完整尺寸，
+        例如 gate_proj/up_proj。每个 TP rank 保存每个输出投影的 1/tp_size 切片，
+        本地 weight shape [sum(output_sizes)/tp_size, input_size]。
+        """
+
         # check that all output sizes are divisible by tp_size
         tp_info = get_tp_info()
         tp_output_sizes = [div_even(size, tp_info.size) for size in output_sizes]
@@ -79,7 +99,11 @@ class LinearColParallelMerged(_LinearTPImpl):
 
 
 class LinearQKVMerged(_LinearTPImpl):
-    """Attention 的 Q/K/V 合并投影层。"""
+    """Attention 的 Q/K/V 合并投影层。
+
+    输入 shape [T, hidden_size]；输出 shape
+    [T, (local_q_heads + 2*local_kv_heads) * head_dim]。
+    """
 
     def __init__(
         self,
@@ -89,6 +113,13 @@ class LinearQKVMerged(_LinearTPImpl):
         num_kv_heads: int,
         has_bias: bool,
     ):
+        """创建合并 QKV 投影。
+
+        hidden_size 是输入通道数；num_qo_heads/num_kv_heads 是全局 head 数。
+        TP 后每个 rank 输出 local_q_heads 个 Q 和 local_kv_heads 个 K/V：
+        local output size = (local_q_heads + 2*local_kv_heads) * head_dim。
+        """
+
         tp_info = get_tp_info()
 
         local_num_qo = div_even(num_qo_heads, tp_info.size)
@@ -101,9 +132,19 @@ class LinearQKVMerged(_LinearTPImpl):
 
 
 class LinearOProj(_LinearTPImpl):
-    """Attention 输出投影层，输入维按 TP 切分，输出需要 all_reduce。"""
+    """Attention 输出投影层，输入维按 TP 切分，输出需要 all_reduce。
+
+    输入 shape [T, hidden_size/tp_size]；all_reduce 后输出 shape [T, hidden_size]。
+    """
 
     def __init__(self, input_size: int, output_size: int, has_bias: bool):
+        """创建 attention output projection。
+
+        input_size/output_size 是全局 hidden size。每个 TP rank 只接收
+        input_size/tp_size 个输入通道，局部线性输出 shape [..., output_size]，
+        多卡时再 all_reduce 求和得到完整输出。
+        """
+
         tp_info = get_tp_info()
         full_isize = input_size
         full_osize = output_size
@@ -123,7 +164,10 @@ class LinearOProj(_LinearTPImpl):
 
 
 class LinearRowParallel(_LinearTPImpl):
-    """按输入维切分的线性层，输出需要 all_reduce。"""
+    """按输入维切分的线性层，输出需要 all_reduce。
+
+    输入 shape [T, input_size/tp_size]；all_reduce 后输出 shape [T, output_size]。
+    """
 
     def __init__(
         self,
@@ -131,6 +175,12 @@ class LinearRowParallel(_LinearTPImpl):
         output_size: int,
         has_bias: bool,
     ):
+        """创建 row-parallel linear。
+
+        input_size 是全局输入维度；每个 TP rank 保存 local_input_size=input_size/tp_size。
+        局部输出 shape [..., output_size]，多卡时所有 rank 的输出相加。
+        """
+
         tp_info = get_tp_info()
         local_input_size = div_even(input_size, tp_info.size)
         local_output_size = output_size

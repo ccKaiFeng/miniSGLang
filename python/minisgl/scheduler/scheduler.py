@@ -50,9 +50,15 @@ class ForwardInput(NamedTuple):
     sample_args: BatchSamplingArgs
 
     # input_tuple 用来从 token_pool 取出本轮要送进模型的 token。
+    # 两个 tensor shape 都是 [total_extend_tokens]：
+    #   token_mapping[i] = table_idx；
+    #   positions[i] = 该请求内逻辑 token 位置。
+    # 因此 token_pool[input_tuple] 得到 shape [total_extend_tokens] 的 input_ids。
     input_tuple: Indice2D  # (token_mapping, positions)
 
     # write_tuple 用来把本轮生成的新 token 写回 token_pool。
+    # 两个 tensor shape 都是 [batch.size]，只覆盖真实请求，不包含 graph padding dummy。
+    # 第二个 tensor 是写入位置 req.device_len；不能继续 decode 的请求填 -1。
     write_tuple: Indice2D  # (req_mapping, seq_lens or -1)
 
 
@@ -304,6 +310,7 @@ class Scheduler(SchedulerIOMixin):
         write_mapping = _make_write_tuple(batch, self.device)
 
         # out_loc 是本轮每个输入 token 对应的 KV cache 写入位置。
+        # input_mapping 是二维高级索引；page_table[input_mapping] shape [total_extend_tokens]。
         batch.out_loc = self.engine.page_table[input_mapping]
 
         # attention backend 根据 batch/page table 准备自己的 metadata。
@@ -343,7 +350,11 @@ class Scheduler(SchedulerIOMixin):
 
 
 def _make_positions(batch: Batch, device: torch.device) -> torch.Tensor:
-    """生成 batch 中每个输入 token 的 position。"""
+    """生成 batch 中每个输入 token 的 position。
+
+    返回 GPU int32 tensor，shape [sum(req.extend_len for req in padded_reqs)]。
+    对每个请求，填入 [cached_len, device_len)；这也是 RoPE 使用的绝对 token 位置。
+    """
 
     needed_size = sum(r.extend_len for r in batch.padded_reqs)
     indices_host = torch.empty(needed_size, dtype=torch.int32, pin_memory=True)
@@ -365,6 +376,9 @@ def _make_input_tuple(batch: Batch, device: torch.device) -> Indice2D:
 
     返回值是 (table_idx_tensor, position_tensor)，可用于：
         token_pool[table_idx_tensor, position_tensor]
+
+    两个 tensor shape 都是 [total_extend_tokens]，返回 dtype int64 是为了满足
+    PyTorch 高级索引要求。
     """
 
     mapping_host = torch.empty(len(batch.positions), dtype=torch.int64, pin_memory=True)
@@ -381,6 +395,8 @@ def _make_write_tuple(batch: Batch, device: torch.device) -> Indice2D:
 
     对每个真实请求，写入位置是 req.device_len。
     如果 req 不能继续 decode，就写 -1；这些位置不会再被正常读取。
+
+    返回两个 GPU int64 tensor，shape [batch.size]，不包含 padded dummy req。
     """
 
     mapping_list = [req.table_idx for req in batch.reqs]

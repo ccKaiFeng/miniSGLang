@@ -30,8 +30,12 @@ def nvtx_annotate(name: str, layer_id_field: str | None = None):
     import torch.cuda.nvtx as nvtx
 
     def decorator(fn):
+        """接收被装饰函数，返回带 NVTX range 的 wrapper。"""
+
         @functools.wraps(fn)
         def wrapper(self, *args, **kwargs):
+            """执行原函数，并在执行期间打开一个 NVTX range。"""
+
             display_name = name
             if layer_id_field and hasattr(self, layer_id_field):
                 display_name = name.format(getattr(self, layer_id_field))

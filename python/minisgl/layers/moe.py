@@ -28,6 +28,8 @@ class MoELayer(BaseOP):
         """创建 expert 权重。
 
         intermediate_size 会按 TP size 切分，每个 rank 保存 expert 的一部分中间维度。
+        gate_up_proj shape [num_experts, 2*intermediate_size/tp_size, hidden_size]；
+        down_proj shape [num_experts, hidden_size, intermediate_size/tp_size]。
         """
 
         super().__init__()
@@ -56,7 +58,11 @@ class MoELayer(BaseOP):
         )
 
     def forward(self, hidden_states: torch.Tensor, router_logits: torch.Tensor):
-        """根据 router_logits 选择 expert 并计算 token 输出。"""
+        """根据 router_logits 选择 expert 并计算 token 输出。
+
+        hidden_states shape [T, hidden_size]；router_logits shape [T, num_experts]；
+        返回 shape [T, hidden_size]。
+        """
 
         ctx = get_global_ctx()
         final_hidden_states = ctx.moe_backend.forward(

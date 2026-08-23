@@ -19,30 +19,55 @@ class BaseKVCachePool(ABC):
     """KV cache 显存池抽象接口。
 
     具体实现负责分配真实的 K/V tensor，并提供按 layer 访问和写入的接口。
+
+    本工程的常用维度符号：
+    - L: transformer layer 数；
+    - P: normal KV pool 的 page 数；
+    - S: page_size，每个 page 中 token 数；
+    - H_kv: 本 TP rank 上的 KV head 数；
+    - D: head_dim；
+    - T: 当前 batch 本轮实际计算的新 token 数。
     """
 
     @abstractmethod
-    def k_cache(self, index: int) -> torch.Tensor: ...
+    def k_cache(self, index: int) -> torch.Tensor:
+        """返回第 index 层 K cache，典型 shape [P, S, H_kv, D]。"""
+        ...
 
     @abstractmethod
-    def v_cache(self, index: int) -> torch.Tensor: ...
+    def v_cache(self, index: int) -> torch.Tensor:
+        """返回第 index 层 V cache，典型 shape [P, S, H_kv, D]。"""
+        ...
 
     @abstractmethod
     def store_kv(
         self, k: torch.Tensor, v: torch.Tensor, out_loc: torch.Tensor, layer_id: int
-    ) -> None: ...
+    ) -> None:
+        """把本轮新算出的 K/V 写入 cache。
+
+        k/v shape 可以是 [T, H_kv, D] 或已经展平的 [T, H_kv*D]；
+        store kernel 会按每个 token 一整行拷贝。out_loc shape [T]，
+        每个元素是物理 token index。
+        """
+        ...
 
     @property
     @abstractmethod
-    def device(self) -> torch.device: ...
+    def device(self) -> torch.device:
+        """KV cache 所在设备，通常是当前 TP rank 的 CUDA device。"""
+        ...
 
     @property
     @abstractmethod
-    def dtype(self) -> torch.dtype: ...
+    def dtype(self) -> torch.dtype:
+        """KV cache tensor 的 dtype，例如 torch.float16 或 torch.bfloat16。"""
+        ...
 
     @property
     @abstractmethod
-    def num_layers(self) -> int: ...
+    def num_layers(self) -> int:
+        """KV cache 覆盖的 transformer layer 数 L。"""
+        ...
 
 
 @dataclass(frozen=True)
@@ -56,7 +81,9 @@ class BaseCacheHandle(ABC):
     cached_len: int
 
     @abstractmethod
-    def get_matched_indices(self) -> torch.Tensor: ...
+    def get_matched_indices(self) -> torch.Tensor:
+        """返回命中前缀对应的物理 token indices，shape [cached_len]。"""
+        ...
 
 
 class SizeInfo(NamedTuple):
@@ -67,13 +94,15 @@ class SizeInfo(NamedTuple):
 
     @property
     def total_size(self) -> int:
+        """当前 prefix cache 总 token 数 = 可驱逐 + 受保护。"""
+
         return self.evictable_size + self.protected_size
 
 
 class InsertResult(NamedTuple):
     """插入 prefix cache 后返回的信息。"""
 
-    cached_len: int  # length already in cache before insertion (should be freed)
+    cached_len: int  # 已存在 cache 中的 token 数，单位 token，不是 page。
     handle: BaseCacheHandle  # cache handle for the inserted prefix
 
 

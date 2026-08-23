@@ -25,6 +25,13 @@ def moe_sum_reduce_kernel(
     BLOCK_DIM: tl.constexpr,
     NUM_STAGE: tl.constexpr,
 ):
+    """把每个 token 的 top-k expert 输出在 hidden_dim 上求和。
+
+    input 逻辑 shape [token_num, topk_num, hidden_dim]；
+    output 逻辑 shape [token_num, hidden_dim]。每个 Triton program 处理
+    BLOCK_M 个 token 和 BLOCK_DIM 个 hidden 通道。
+    """
+
     # 每个 program 处理一个 token block 和 hidden dim block。
     input_stride_0 = tl.cast(input_stride_0, dtype=tl.int64)
     input_stride_1 = tl.cast(input_stride_1, dtype=tl.int64)

@@ -23,7 +23,13 @@ class BaseOP:
     """所有自定义算子、层、模型 block 的基类。"""
 
     @abstractmethod
-    def forward(self, *args: Any, **kwargs: Any) -> Any: ...
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
+        """执行算子前向计算。
+
+        具体输入输出由子类决定。miniSGLang 的模型层通常接收 shape
+        [T, hidden_size] 的 hidden_states，其中 T 是当前 batch 展平后的 token 数。
+        """
+        ...
 
     def state_dict(self, *, prefix: str = "", result: _STATE_DICT | None = None) -> _STATE_DICT:
         """递归收集当前对象中的 torch.Tensor 参数。"""
@@ -70,6 +76,11 @@ class StateLessOP(BaseOP):
     """没有可训练参数的算子基类。"""
 
     def __init__(self):
+        """初始化无状态算子。
+
+        无状态表示没有 torch.Tensor 参数需要加载/保存，例如激活函数、RoPE factory wrapper 等。
+        """
+
         super().__init__()
 
     def load_state_dict(
@@ -79,10 +90,17 @@ class StateLessOP(BaseOP):
         prefix: str = "",
         _internal: bool = False,
     ) -> None:
+        """无状态算子不消费任何权重。
+
+        顶层调用时如果 state_dict 仍有 key，说明 checkpoint 与模型结构不匹配。
+        """
+
         if not _internal and state_dict:
             raise RuntimeError(f"Unexpected keys in state_dict: {list(state_dict.keys())}")
 
     def state_dict(self, *, prefix: str = "", result: _STATE_DICT | None = None) -> _STATE_DICT:
+        """无状态算子返回空权重集合。"""
+
         return result if result is not None else {}
 
 
@@ -93,6 +111,11 @@ class OPList(BaseOP, Generic[T]):
     """BaseOP 的列表容器，作用类似 torch.nn.ModuleList。"""
 
     def __init__(self, ops: List[T]):
+        """保存一组 BaseOP 子模块。
+
+        ops 通常是 transformer layers 列表；state_dict key 会使用数字下标作为层号。
+        """
+
         super().__init__()
         self.op_list = ops
 

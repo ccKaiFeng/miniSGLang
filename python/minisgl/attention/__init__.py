@@ -21,7 +21,9 @@ logger = init_logger(__name__)
 class BackendCreator(Protocol):
     """attention backend 创建函数的类型约束。"""
 
-    def __call__(self, config: ModelConfig) -> BaseAttnBackend: ...
+    def __call__(self, config: ModelConfig) -> BaseAttnBackend:
+        """根据模型配置创建一个 attention backend 实例。"""
+        ...
 
 
 SUPPORTED_ATTENTION_BACKENDS = Registry[BackendCreator]("Attention Backend")

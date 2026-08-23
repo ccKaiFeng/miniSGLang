@@ -59,7 +59,12 @@ class RadixTreeNode:
         self.compressed_id: int | None = None
 
     def set_key_value(self, key: torch.Tensor, value: torch.Tensor) -> None:
-        """设置当前节点保存的 token key 和 KV cache indices。"""
+        """设置当前节点保存的 token key 和 KV cache indices。
+
+        key shape [node_len]，元素是 token id；
+        value shape [node_len]，元素是 normal KV pool 的物理 token index。
+        两者长度必须一致，因为 radix node 以 token 为最小语义单位。
+        """
 
         assert len(key) == len(value)
         self._key = key
@@ -69,13 +74,20 @@ class RadixTreeNode:
         self.compressed_id = None
 
     def mark_compressed(self, compressed_id: int) -> None:
-        """标记当前节点的真实 KV 已经从 fp16 page demote 到 compressed pool。"""
+        """标记当前节点的真实 KV 已经从 fp16 page demote 到 compressed pool。
+
+        注意 node.value 仍保留旧 normal indices 作为调试/统计线索，但 compressed
+        状态下 attention 不能直接读这些 indices；命中时必须先 restore 到 normal pool。
+        """
 
         self.value_kind = "compressed"
         self.compressed_id = compressed_id
 
     def mark_restored(self, value: torch.Tensor) -> None:
-        """把 compressed 节点重新物化成 normal fp16 page。"""
+        """把 compressed 节点重新物化成 normal fp16 page。
+
+        value shape [self.length]，元素是新分配或恢复出的 normal KV 物理 token index。
+        """
 
         assert len(value) == self.length
         self._value = value
@@ -84,6 +96,8 @@ class RadixTreeNode:
 
     @property
     def is_compressed(self) -> bool:
+        """当前节点是否只保留 compressed pool entry，而不能被 attention 直接读取。"""
+
         return self.value_kind == "compressed"
 
     def set_parent(self, parent: RadixTreeNode) -> None:
@@ -94,15 +108,25 @@ class RadixTreeNode:
 
     @property
     def length(self) -> int:
+        """当前节点自身 key/value 覆盖的 token 数，不包含祖先节点。"""
+
         return self._length
 
     @property
     def parent(self) -> RadixTreeNode:
+        """返回父节点；root 没有 parent，因此访问 root.parent 会触发 assert。"""
+
         assert self._parent is not None
         return self._parent
 
     @property
     def value(self) -> torch.Tensor:
+        """返回当前节点保存的 KV 物理 token indices。
+
+        fp16 状态下这些 indices 可直接写入 page_table；compressed 状态下只作为旧
+        normal 位置记录，真正使用前必须 restore。
+        """
+
         return self._value
 
     def is_root(self) -> bool:
@@ -116,7 +140,11 @@ class RadixTreeNode:
         return len(self.children) == 0
 
     def get_match_len(self, input_ids: torch.Tensor) -> int:
-        """计算当前节点 key 与输入 token 序列的共同前缀长度。"""
+        """计算当前节点 key 与输入 token 序列的共同前缀长度。
+
+        self._key shape [node_len]；input_ids shape [remaining_len]。
+        返回值单位是 token，后续会 align_down 到 page_size。
+        """
 
         from minisgl.kernel import fast_compare_key
 
@@ -163,7 +191,12 @@ class RadixCacheHandle(BaseCacheHandle):
     node: RadixTreeNode
 
     def get_matched_indices(self) -> torch.Tensor:
-        """从命中节点一路回溯到 root，拼出完整命中前缀的 KV indices。"""
+        """从命中节点一路回溯到 root，拼出完整命中前缀的 KV indices。
+
+        返回 shape [cached_len]，顺序与请求 token 前缀一致：
+        result[pos] 就是逻辑 token 位置 pos 对应的 normal KV 物理 token index。
+        如果路径中存在 compressed node，v3 会在返回给 scheduler 前替换成临时 restored indices。
+        """
 
         node = self.node
         value_list: List[torch.Tensor] = []
@@ -228,6 +261,9 @@ class RadixPrefixCache(BasePrefixCache):
 
         只插入 page_size 对齐的长度，因为 KV cache 以 page 为单位管理。
         如果前缀已经存在，只返回已有前缀长度；如果有新增部分，就创建新节点。
+
+        input_ids/indices 原始 shape 都是 [req.cached_len]；截断后 shape [insert_len]。
+        indices 的单位是物理 token index，不是 page id。
         """
 
         insert_len = align_down(len(input_ids), self.page_size)

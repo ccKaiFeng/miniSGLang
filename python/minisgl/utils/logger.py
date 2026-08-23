@@ -111,6 +111,8 @@ def init_logger(
     logger.propagate = False
 
     def _call_rank0(msg, *args, _which, **kwargs):
+        """只在 TP primary rank 上调用真实 logger 方法。"""
+
         from minisgl.distributed import get_tp_info
 
         nonlocal tp_info
@@ -124,10 +126,18 @@ def init_logger(
         class WrapperLogger(logging.Logger):
             """Custom logger to handle the color formatter."""
 
-            def info_rank0(self, msg, *args, **kwargs): ...
-            def warning_rank0(self, msg, *args, **kwargs): ...
-            def debug_rank0(self, msg, *args, **kwargs): ...
-            def critical_rank0(self, msg, *args, **kwargs): ...
+            def info_rank0(self, msg, *args, **kwargs):
+                """仅 rank0 打印 info 日志。"""
+                ...
+            def warning_rank0(self, msg, *args, **kwargs):
+                """仅 rank0 打印 warning 日志。"""
+                ...
+            def debug_rank0(self, msg, *args, **kwargs):
+                """仅 rank0 打印 debug 日志。"""
+                ...
+            def critical_rank0(self, msg, *args, **kwargs):
+                """仅 rank0 打印 critical 日志。"""
+                ...
 
         return WrapperLogger(name)
     else:

@@ -72,12 +72,20 @@ class Req:
     - extend_len：本轮还需要送进模型计算、尚未 cache 的 token 数。
     """
 
-    input_ids: torch.Tensor  # cpu tensor
+    # input_ids: CPU int tensor, shape [seq_len]。
+    # seq_len 会随生成增长：初始化时是 prompt_len，append_host 后包含已生成 token。
+    input_ids: torch.Tensor
+    # table_idx: int 标量，表示这个请求占用 page_table/token_pool 的第几行。
     table_idx: int
+    # cached_len/device_len/max_device_len/output_len 都以 token 为单位，不是 byte/page。
+    # cached_len: [0, cached_len) 已经能从 KV cache 读取；device_len: 当前序列长度。
     cached_len: int
+    # output_len: 该请求最多还能生成多少新 token，来自 SamplingParams.max_tokens。
     output_len: int
+    # uid: 前端分配的请求 id，用于 tokenizer/scheduler/detokenizer 对齐。
     uid: int
     sampling_params: SamplingParams
+    # cache_handle: prefix cache 命中的句柄；handle.get_matched_indices() shape [cached_len]。
     cache_handle: BaseCacheHandle
 
     def __post_init__(self) -> None:
@@ -159,8 +167,15 @@ class Batch:
     reqs: List[Req]
     phase: Literal["prefill", "decode"]
     # these fields should be set by scheduler
+    # input_ids: GPU int tensor, shape [total_extend_tokens]。
+    # total_extend_tokens = sum(req.extend_len for req in padded_reqs)。
+    # prefill 时一个请求可能贡献多个 token；decode 时通常每个请求贡献 1 个 token。
     input_ids: torch.Tensor = field(init=False)
+    # positions: GPU int tensor, shape [total_extend_tokens]。
+    # positions[i] 是 input_ids[i] 在该请求完整序列里的绝对 token 位置。
     positions: torch.Tensor = field(init=False)
+    # out_loc: GPU int tensor, shape [total_extend_tokens]。
+    # out_loc[i] 是 input_ids[i] 的 K/V 写入 normal KV pool 的物理 token index。
     out_loc: torch.Tensor = field(init=False)
     padded_reqs: List[Req] = field(init=False)
     # this field should be set by attention backend
@@ -204,6 +219,10 @@ class Context:
 
     page_size: int
     # NOTE: this table always treat page_size = 1
+    # page_table: GPU int32 tensor, shape [max_running_req + 1, aligned_max_seq_len]。
+    # page_table[table_idx, token_pos] = normal KV pool 的物理 token index。
+    # 注意这里存的是 token 粒度 raw location，不是 page id；page_size>1 的 backend
+    # 需要自行除以 page_size 得到 page id。
     page_table: torch.Tensor = field(init=False)
     attn_backend: BaseAttnBackend = field(init=False)
     moe_backend: BaseMoeBackend = field(init=False)

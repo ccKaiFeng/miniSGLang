@@ -53,7 +53,12 @@ class GatedMLP(BaseOP):
 
     @nvtx_annotate("MLP")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """执行 MLP：gate/up 投影 -> fused activation -> down projection。"""
+        """执行 MLP：gate/up 投影 -> fused activation -> down projection。
+
+        x shape [T, hidden_size]；gate_up shape [T, 2*intermediate_size/tp_size]；
+        fused activation 后 shape [T, intermediate_size/tp_size]；
+        down_proj all_reduce 后返回 [T, hidden_size]。
+        """
 
         gate_up = self.gate_up_proj.forward(x)
         del x
@@ -82,7 +87,11 @@ class MoEMLP(BaseOP):
         )
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        """先用 gate 算每个 token 应该去哪些 expert，再执行 expert 计算。"""
+        """先用 gate 算每个 token 应该去哪些 expert，再执行 expert 计算。
+
+        hidden_states shape [T, hidden_size]；router_logits shape [T, num_experts]；
+        返回 shape [T, hidden_size]。
+        """
 
         num_tokens, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_dim)
@@ -105,6 +114,21 @@ class RopeAttn(BaseOP):
         has_attn_bias: bool = False,
         has_qk_norm: bool = False,
     ):
+        """创建一个带 RoPE 的 attention block。
+
+        参数：
+        - config：模型结构配置，提供 hidden_size、head_dim、head 数和 RoPE 参数；
+        - layer_id：当前层号，AttentionLayer 用它选择 KV cache[layer_id]；
+        - has_attn_bias：QKV merged projection 是否带 bias，Qwen2 为 True；
+        - has_qk_norm：是否对 q/k 按 head_dim 做 RMSNorm，Qwen3 为 True。
+
+        维度：
+        - 输入 x shape [T, hidden_size]；
+        - qkv_proj 输出 [T, (local_q_heads + 2*local_kv_heads) * head_dim]；
+        - attention 输出 [T, local_q_heads * head_dim]；
+        - o_proj 输出 [T, hidden_size]。
+        """
+
         head_dim = config.head_dim
         self.qkv_proj = LinearQKVMerged(
             hidden_size=config.hidden_size,
@@ -137,7 +161,13 @@ class RopeAttn(BaseOP):
 
     @nvtx_annotate("MHA")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """执行 QKV projection、attention backend 和输出投影。"""
+        """执行 QKV projection、attention backend 和输出投影。
+
+        x shape [T, hidden_size]；
+        qkv shape [T, (local_q_heads + 2*local_kv_heads)*head_dim]；
+        attention 输出 shape [T, local_q_heads*head_dim]；
+        o_proj all_reduce 后返回 [T, hidden_size]。
+        """
 
         qkv = self.qkv_proj.forward(x)
         del x

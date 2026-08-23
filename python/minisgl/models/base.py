@@ -17,4 +17,10 @@ class BaseLLMModel(ABC, BaseOP):
     """完整因果语言模型的抽象基类。"""
 
     @abstractmethod
-    def forward(self) -> torch.Tensor: ...
+    def forward(self) -> torch.Tensor:
+        """执行当前全局 batch 的模型前向，返回用于采样的 logits。
+
+        具体模型会从 get_global_ctx().batch.input_ids 读取输入 token。
+        返回通常是 shape [batch.size, vocab_size]，只保留每个请求最后一个位置的 logits。
+        """
+        ...

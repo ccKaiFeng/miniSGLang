@@ -23,6 +23,8 @@ class CppArgList(list[str]):
     """C++ 模板参数列表，转字符串时用逗号拼接。"""
 
     def __str__(self) -> str:
+        """返回 C++ 模板实参字符串，例如 '128,4,true'。"""
+
         return ", ".join(self)
 
 
@@ -35,6 +37,11 @@ class KernelConfig(NamedTuple):
 
     @property
     def template_args(self) -> str:
+        """返回 kernel 模板参数字符串。
+
+        对应 C++ 模板中的 num_threads、max_occupancy、use_pdl 三个参数。
+        """
+
         pdl = "true" if self.use_pdl else "false"
         return f"{self.num_threads},{self.max_occupancy},{pdl}"
 
@@ -56,6 +63,8 @@ def make_cpp_args(*args: CPP_TEMPLATE_TYPE) -> CppArgList:
     """把 Python 参数转换成 C++ 模板参数字符串。"""
 
     def _convert(arg: CPP_TEMPLATE_TYPE) -> str:
+        """把一个 Python 标量转换成 C++ 模板字面量。"""
+
         if isinstance(arg, bool):
             return "true" if arg else "false"
         if isinstance(arg, (int, float)):

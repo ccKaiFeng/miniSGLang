@@ -110,21 +110,29 @@ class Console:
         self.inflight_counter.dec(n)
 
     def update_prefill(self, n=1):
+        """记录一个请求收到首 token，相当于完成一次 prefill/TTFT。"""
+
         self.prefill_pbar.update(n)
         self.prefill_pbar.refresh()
         self.queue_counter.dec(n)
 
     def update_decode(self, n=1):
+        """记录 decode 阶段新增 n 个输出 token。"""
+
         self.decode_pbar.update(n)
 
     @contextmanager
     def inflight(self, n=1):
+        """请求生命周期上下文：进入时计入 inflight，退出时计为完成。"""
+
         self.update_input(n)
         yield
         self.update_output(n)
 
     @contextmanager
     def log_stats(self):
+        """benchmark 结束时关闭进度条并打印最大并发/排队数。"""
+
         yield
         self.input_pbar.close()
         self.output_pbar.close()
@@ -138,17 +146,29 @@ class Console:
 
 @dataclass(frozen=True)
 class BenchmarkResult:
+    """一组 benchmark 请求的可序列化结果。"""
+
     raw_data: List[BenchOneResult]
 
     def as_json(self) -> List[List[float]]:
+        """把所有请求结果转成 JSON 友好的二维 list。"""
+
         return [r.as_json() for r in self.raw_data]
 
     @staticmethod
     def from_json(raw: List[List[float]]) -> BenchmarkResult:
+        """从二维 list 恢复 BenchmarkResult。"""
+
         return BenchmarkResult(raw_data=[BenchOneResult.from_json(r) for r in raw])
 
 
 def make_console(num_requests: int, sum_output_length: int, use_pbar: bool = True) -> Console:
+    """创建 benchmark 进度条集合。
+
+    num_requests 是请求数；sum_output_length 是所有请求 max_tokens 之和。
+    prefill token 数按每请求 1 个首 token 估算，剩余计入 decode token。
+    """
+
     BAR_FORMAT_0 = (
         "{desc:<10} {percentage:3.0f}%|{bar}|"
         " {n_fmt:>5}/{total_fmt} "
@@ -236,6 +256,12 @@ async def benchmark_one(
     extra_body: Dict[str, Any] | None = None,
     input_length: int | None = None,  # a hack to force input length
 ) -> RawResult:
+    """发送单个 OpenAI chat completion streaming 请求并记录 token 到达时间。
+
+    返回 RawResult.tics，其中 tics[0] 是请求发出前时间，tics[1] 是首个 chunk 到达时间，
+    后续元素对应后续 streaming chunk 到达时间。
+    """
+
     if isinstance(pbar, bool):
         pbar = make_console(1, output_length, use_pbar=pbar)
     with pbar.inflight(1):
@@ -285,6 +311,12 @@ async def benchmark_one_batch(
     input_lengths: List[int | None] | None = None,
     pbar: Console | bool = True,
 ) -> List[RawResult]:
+    """并发发送一批 prompt，并返回每个请求的 RawResult。
+
+    output_lengths 可以是单个整数或逐请求列表；input_lengths 用于 trace replay 时强制
+    记录原始输入长度，而不必重新 tokenizer 统计。
+    """
+
     if isinstance(output_lengths, int):
         output_lengths = [output_lengths] * len(prompts)
     if isinstance(pbar, bool):
@@ -318,6 +350,12 @@ async def benchmark_trace(
     *,
     pbar: Console | bool = True,
 ) -> List[RawResult]:
+    """按 trace timestamp 回放一组请求。
+
+    msg.timestamp 单位为秒；函数会按最早 timestamp 对齐到当前时间后异步 sleep，
+    近似模拟线上请求到达过程。
+    """
+
     if isinstance(pbar, bool):
         sum_output_len = sum(msg.output_length for msg in msgs)
         pbar = make_console(len(msgs), sum_output_len, use_pbar=pbar)
@@ -325,6 +363,8 @@ async def benchmark_trace(
     offset = min(msg.timestamp for msg in msgs) - 1
 
     async def benchmark_timed(msg: BenchmarkTrace):
+        """等待到 trace 目标时间后发起单个请求。"""
+
         target = start + msg.timestamp - offset
         await asyncio.sleep(max(0, target - time.perf_counter()))
         return await benchmark_one(
@@ -337,17 +377,28 @@ async def benchmark_trace(
 
 
 @overload
-def process_benchmark_results(raw_data: List[RawResult], tokenizer: Any) -> BenchmarkResult: ...
+def process_benchmark_results(raw_data: List[RawResult], tokenizer: Any) -> BenchmarkResult:
+    """传入 tokenizer 时返回可序列化 BenchmarkResult。"""
+    ...
 
 
 @overload
-def process_benchmark_results(raw_data: List[RawResult]) -> None: ...
+def process_benchmark_results(raw_data: List[RawResult]) -> None:
+    """不传 tokenizer 时只打印统计日志，不返回结果。"""
+    ...
 
 
 def process_benchmark_results(
     raw_data: List[RawResult],
     tokenizer: Any = UNSET,
 ) -> BenchmarkResult | None:
+    """汇总 benchmark 原始时间戳并打印延迟/吞吐指标。
+
+    TTFT 使用首 chunk 延迟；TPOT 使用首 token 之后相邻 chunk 间隔；
+    E2E 使用每个请求最后一个 chunk 与请求开始时间之差。
+    如果传入 tokenizer，则额外返回可保存的 BenchmarkResult。
+    """
+
     accum_times: List[float] = []
     first_times: List[float] = []
     results = [r.tics for r in raw_data]
@@ -365,6 +416,8 @@ def process_benchmark_results(
     e2e_times.sort()
 
     def _print_stats(times: List[float], scale: float = 1.0) -> Tuple[float, ...]:
+        """返回 avg/p50/p90/p99/max，scale 用于秒到毫秒转换。"""
+
         assert len(times) > 0
         return (
             scale * sum(times) / len(times),  # avg
@@ -375,6 +428,8 @@ def process_benchmark_results(
         )
 
     def _fmt(x: float) -> str:
+        """把数值格式化成固定宽度字符串，便于日志对齐。"""
+
         if x >= 1000:
             return f"{int(x):>6}"
         elif x >= 10:
@@ -437,7 +492,15 @@ def read_qwen_trace(
     n: int | None = None,
     dummy: bool = False,
 ) -> List[BenchmarkTrace]:
+    """读取 Qwen trace JSONL 并转换成 BenchmarkTrace 列表。
+
+    n 限制读取前 n 行；dummy=True 时复用一段最长 prompt 切片，减少随机生成差异。
+    timestamp 单位保持原 trace 的秒。
+    """
+
     class JSONInput(BaseModel):
+        """Qwen trace 单行 JSON schema。"""
+
         chat_id: int
         parent_chat_id: int
         timestamp: float
@@ -475,7 +538,14 @@ def read_mooncake_trace(
     n: int | None = None,
     dummy: bool = False,
 ) -> List[BenchmarkTrace]:
+    """读取 Mooncake trace JSONL 并转换成 BenchmarkTrace 列表。
+
+    原始 timestamp 单位是毫秒，返回时除以 1000 转成秒。
+    """
+
     class JSONInput(BaseModel):
+        """Mooncake trace 单行 JSON schema。"""
+
         timestamp: int
         input_length: int
         output_length: int
@@ -507,6 +577,11 @@ def scale_traces(
     traces: List[BenchmarkTrace],
     scale: float,
 ) -> List[BenchmarkTrace]:
+    """按比例缩放 trace 到达时间。
+
+    先把最早 timestamp 平移到 0，再乘以 scale；scale<1 表示请求到达更密集。
+    """
+
     min_tic = min(trace.timestamp for trace in traces)
     return sorted(
         [
@@ -523,6 +598,8 @@ def scale_traces(
 
 
 async def get_model_name(client: OpenAI) -> str:
+    """从 OpenAI-compatible /models 接口读取第一个模型名。"""
+
     async for model in client.models.list():
         return model.id
     raise ValueError("No models available")
