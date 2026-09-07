@@ -212,12 +212,14 @@ run_experiment() {
 safe_checkout() {
     local ref="$1"
     log "Switching to ${ref}..."
-    git stash --include-untracked -q 2>/dev/null || true
+    git stash -q 2>/dev/null || true
     if ! git checkout "${ref}" 2>/dev/null; then
         git stash pop -q 2>/dev/null || true
         die "Failed to checkout ${ref}"
     fi
     git stash pop -q 2>/dev/null || true
+    # Ensure log directory exists after branch switch
+    mkdir -p "${BENCH_DIR}"
     log "Now on: $(git branch --show-current || git rev-parse --short HEAD)"
 }
 
