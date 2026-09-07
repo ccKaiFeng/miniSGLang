@@ -1,0 +1,65 @@
+$ /root/miniconda3/envs/minisgl-ZipCache/bin/python /root/autodl-tmp/miniSGLang/experiment/bench_openai_stream.py --base-url http://127.0.0.1:30000 --dataset /root/autodl-tmp/miniSGLang/experiment/workloads/longbench_long_context_pressure.jsonl --output experiment/logs/20260907_201005_main_quick/longbench_long_context_pressure.jsonl --summary experiment/logs/20260907_201005_main_quick/longbench_long_context_pressure_summary.json --concurrency 4 --repeat 1 --model minisgl --timeout 600 --gpu-sample-interval 0.5 --max-tokens 128 --limit 32
+
+[1/32] long_context_qasper_0000_r0 ok
+[2/32] long_context_qasper_0002_r0 ok
+[3/32] long_context_hotpotqa_0000_r0 ok
+[4/32] long_context_qasper_0001_r0 ok
+[5/32] long_context_hotpotqa_0005_r0 ok
+[6/32] long_context_hotpotqa_0014_r0 ok
+[7/32] long_context_hotpotqa_0001_r0 ok
+[8/32] long_context_hotpotqa_0013_r0 ok
+[9/32] long_context_hotpotqa_0002_r0 ok
+[10/32] long_context_hotpotqa_0004_r0 ok
+[11/32] long_context_hotpotqa_0008_r0 ok
+[12/32] long_context_hotpotqa_0016_r0 ok
+[13/32] long_context_hotpotqa_0006_r0 ok
+[14/32] long_context_hotpotqa_0009_r0 ok
+[15/32] long_context_hotpotqa_0003_r0 ok
+[16/32] long_context_hotpotqa_0007_r0 ok
+[17/32] long_context_hotpotqa_0017_r0 ok
+[18/32] long_context_hotpotqa_0011_r0 ok
+[19/32] long_context_2wikimqa_0000_r0 ok
+[20/32] long_context_hotpotqa_0010_r0 ok
+[21/32] long_context_hotpotqa_0015_r0 ok
+[22/32] long_context_hotpotqa_0012_r0 ok
+[23/32] long_context_2wikimqa_0002_r0 ok
+[24/32] long_context_2wikimqa_0001_r0 ok
+[25/32] long_context_passage_retrieval_en_0000_r0 ok
+[26/32] long_context_2wikimqa_0003_r0 ok
+[27/32] long_context_passage_retrieval_en_0001_r0 ok
+[28/32] long_context_passage_retrieval_en_0004_r0 ok
+[29/32] long_context_qasper_0003_r0 ok
+[30/32] long_context_2wikimqa_0004_r0 ok
+[31/32] long_context_passage_retrieval_en_0002_r0 ok
+[32/32] long_context_2wikimqa_0005_r0 ok
+{
+  "num_requests": 32,
+  "num_ok": 32,
+  "num_failed": 0,
+  "total_wall_time_s": 6.934503555297852,
+  "request_throughput_rps": 4.614605752931297,
+  "output_chunk_throughput_cps": 586.0549306222747,
+  "output_chunks": 4064,
+  "ttft_avg_s": 0.2560100589180365,
+  "ttft_p50_s": 0.2731441706418991,
+  "ttft_p90_s": 0.3570329286158085,
+  "ttft_p99_s": 0.37465420737862587,
+  "e2e_avg_s": 0.8663611417869106,
+  "e2e_p50_s": 0.8758730664849281,
+  "e2e_p90_s": 0.9025548473000526,
+  "e2e_p99_s": 0.9038420021533966,
+  "tpot_avg_s": 0.004844056213245032,
+  "tpot_p50_s": 0.00471301128466924,
+  "tpot_p90_s": 0.005814417871454406,
+  "tpot_p99_s": 0.006017509197431897,
+  "finish_reasons": {
+    "stop": 32
+  },
+  "num_reached_max_tokens": 0,
+  "gpu_samples": 13,
+  "gpu_memory_used_mb_min": 73563,
+  "gpu_memory_used_mb_max": 73679,
+  "gpu_memory_used_mb_avg": 73670.07692307692
+}
+
+[exit_code] 0
