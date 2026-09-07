@@ -1,0 +1,1 @@
+python experiment/run_all_experiments.py --mode zipcache_v3_quick_cg128 --base-url http://127.0.0.1:30001 --log-root experiment/logs --preset quick --gpu-sample-interval 0.5 --timeout 900 --server-log /tmp/20260703_224014_auto_quick_main_v3_v4_cg128_server_tmp/zipcache_v3_quick_cg128_server.log 

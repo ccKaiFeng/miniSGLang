@@ -1,0 +1,1 @@
+python experiment/run_all_experiments.py --mode main_quick_cg128 --base-url http://127.0.0.1:30000 --log-root experiment/logs --preset quick --gpu-sample-interval 0.5 --timeout 900 

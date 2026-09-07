@@ -1,0 +1,61 @@
+$ /root/miniconda3/envs/minisgl-ZipCache/bin/python /root/autodl-tmp/code/mini-sglang/experiment/parse_zipcache_log.py --log /tmp/20260703_224014_auto_quick_main_v3_v4_cg128_server_tmp/zipcache_v3_quick_cg128_server.log --output experiment/logs/20260703_224327_zipcache_v3_quick_cg128/zipcache_stats_summary.json
+
+{
+  "num_stats": 7,
+  "versions": [
+    "ZipCacheV3"
+  ],
+  "last": {
+    "num_demotions": 288,
+    "num_demote_failures": 0,
+    "num_compressed_entries": 288,
+    "num_compressed_hits": 94,
+    "num_restore_attempts": 94,
+    "num_restore_success": 94,
+    "num_restore_fallback": 0,
+    "num_compressed_freed": 0,
+    "num_temporary_restore_pages": 1561,
+    "num_restore_pages_released": 1561,
+    "num_restore_rejected_small_prefix": 0,
+    "original_estimated_bytes": 58180419584,
+    "compressed_estimated_bytes_4bit": 12774286784,
+    "compressed_storage_bytes": 12774286784,
+    "active_original_estimated_bytes": 58180419584,
+    "active_compressed_estimated_bytes_4bit": 12774286784,
+    "active_compressed_storage_bytes": 12774286784,
+    "last_estimated_compression_ratio": 4.555160142348755,
+    "last_storage_compression_ratio": 4.555160142348755,
+    "num_demote_rejected_pool_full": 0,
+    "active_estimated_compression_ratio": 4.5544945536115495,
+    "active_storage_compression_ratio": 4.5544945536115495,
+    "gpu_memory_allocated_bytes": 48174664192,
+    "gpu_memory_reserved_bytes": 48725229568,
+    "gpu_max_memory_allocated_bytes": 48295197696,
+    "gpu_max_memory_reserved_bytes": 48725229568,
+    "compressed_pool_capacity_bytes": 42949672960,
+    "compressed_pool_used_bytes": 12774286784,
+    "compressed_pool_free_bytes": 30175386176,
+    "compressed_pool_utilization": 0.29742454141378405,
+    "compressed_pool_q_used_bytes": 11637950464,
+    "compressed_pool_q4_used_bytes": 8730796032,
+    "compressed_pool_q2_used_bytes": 2907154432,
+    "compressed_pool_scale_used_bytes": 909069056,
+    "compressed_pool_ids_used_bytes": 227267264,
+    "compressed_pool_q4_capacity_bytes": 19327352832,
+    "compressed_pool_q2_capacity_bytes": 6442450944,
+    "compressed_pool_scale_capacity_bytes": 10737418240,
+    "compressed_pool_ids_capacity_bytes": 6442450944,
+    "normal_pool_capacity_bytes": 3758211072,
+    "estimated_effective_kv_capacity_bytes": 199372262647.71722,
+    "estimated_capacity_gain_vs_normal_pool": 53.04977789382587,
+    "_zipcache_version": "ZipCacheV3"
+  },
+  "max_active_compression_ratio": 4.5544945536115495,
+  "last_active_compression_ratio": 4.5544945536115495,
+  "max_active_original_estimated_bytes": 58180419584,
+  "max_active_compressed_estimated_bytes": 12774286784,
+  "max_num_compressions_or_demotions": 288,
+  "max_num_decompressions_or_restores": 94
+}
+
+[exit_code] 0

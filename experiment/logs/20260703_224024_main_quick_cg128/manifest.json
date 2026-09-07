@@ -1,0 +1,48 @@
+{
+  "mode": "main_quick_cg128",
+  "preset": "quick",
+  "max_samples_override": null,
+  "base_url": "http://127.0.0.1:30000",
+  "started_at": "2026-07-03 22:40:24",
+  "run_dir": "experiment/logs/20260703_224024_main_quick_cg128",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30000/v1",
+    "latency_s": 0.008507885038852692,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "gsm8k_public_correctness",
+      "dataset": "workloads/gsm8k_public_correctness.jsonl",
+      "concurrency": 1,
+      "repeat": 1,
+      "max_tokens": 2048,
+      "ignore_eos": false,
+      "description": "轻量 GSM8K 正确性测试，只取前 64 条样本，降低 v3/v4 测试时间。",
+      "evaluate": "auto",
+      "sample_limit": 64
+    },
+    {
+      "name": "longbench_long_context_pressure",
+      "dataset": "workloads/longbench_long_context_pressure.jsonl",
+      "concurrency": 4,
+      "repeat": 1,
+      "max_tokens": 128,
+      "description": "轻量长上下文显存压力测试，只取前 32 条 LongBench 长样本。",
+      "sample_limit": 32
+    },
+    {
+      "name": "public_shared_prefix_serial",
+      "dataset": "workloads/public_shared_prefix.jsonl",
+      "concurrency": 1,
+      "repeat": 2,
+      "max_tokens": 96,
+      "description": "轻量共享前缀复用测试，顺序重复前 32 条样本，观察 compressed hit/restore。",
+      "sample_limit": 32
+    }
+  ],
+  "git_branch": "main",
+  "git_commit": "2aae790",
+  "git_describe": "2aae790"
+}
