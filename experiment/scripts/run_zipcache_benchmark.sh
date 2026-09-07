@@ -75,14 +75,8 @@ die() {
 cleanup_server() {
     if [[ -n "${SERVER_PID}" ]] && kill -0 "${SERVER_PID}" 2>/dev/null; then
         log "Stopping server (PID ${SERVER_PID})..."
-        # Kill entire process group (parent + multiprocessing children)
-        local pgid
-        pgid=$(ps -o pgid= -p "${SERVER_PID}" 2>/dev/null | tr -d ' ')
-        if [[ -n "${pgid}" ]]; then
-            kill -TERM -"${pgid}" 2>/dev/null || true
-            sleep 3
-            kill -KILL -"${pgid}" 2>/dev/null || true
-        fi
+        kill "${SERVER_PID}" 2>/dev/null || true
+        sleep 3
         kill -9 "${SERVER_PID}" 2>/dev/null || true
         SERVER_PID=""
     fi
