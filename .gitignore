@@ -10,6 +10,8 @@ __pycache__/
 # json files
 *.json
 *.jsonl
+!experiment/logs/*/*.jsonl
+!experiment/logs/*/*.json
 !experiment/data/*.jsonl
 !experiment/workloads/
 !experiment/workloads/*.json
@@ -25,7 +27,7 @@ data/
 *.arrow
 *.parquet
 experiment/__pycache__/
-experiment/logs/
+!experiment/logs/
 experiment/results/
 experiment/ruler/NVIDIA_RULER/
 !experiment/gsm8k/**
