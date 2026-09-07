@@ -11,6 +11,17 @@ from typing import TYPE_CHECKING, Protocol
 from minisgl.utils import Registry, init_logger
 
 from .base import BaseAttnBackend, BaseAttnMetadata, HybridBackend
+from .mixed import (
+    CompressedKVSegment,
+    MixedAttnMetadata,
+    MixedCompressedBuffers,
+    MixedKVBatchSpec,
+    MixedLayerMetadata,
+    NormalKVSegment,
+    attach_mixed_kv_sources,
+    build_mixed_metadata,
+    clear_mixed_kv_sources,
+)
 
 if TYPE_CHECKING:
     from minisgl.models import ModelConfig
@@ -94,6 +105,15 @@ def create_attention_backend(
 __all__ = [
     "BaseAttnMetadata",
     "BaseAttnBackend",
+    "NormalKVSegment",
+    "CompressedKVSegment",
+    "MixedCompressedBuffers",
+    "MixedLayerMetadata",
+    "MixedAttnMetadata",
+    "MixedKVBatchSpec",
+    "attach_mixed_kv_sources",
+    "clear_mixed_kv_sources",
+    "build_mixed_metadata",
     "create_attention_backend",
     "SUPPORTED_ATTENTION_BACKENDS",
     "validate_attn_backend",

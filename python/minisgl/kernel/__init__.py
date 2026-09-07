@@ -1,6 +1,7 @@
 # kernel 包导出 Python 侧可直接调用的自定义 kernel wrapper。
 
 from .index import indexing
+from .mixed_attention import mixed_paged_attention
 from .moe_impl import fused_moe_kernel_triton, moe_sum_reduce_triton
 from .pynccl import PyNCCLCommunicator, init_pynccl
 from .radix import fast_compare_key
@@ -9,6 +10,7 @@ from .tensor import test_tensor
 
 __all__ = [
     "indexing",
+    "mixed_paged_attention",
     "fast_compare_key",
     "store_cache",
     "test_tensor",

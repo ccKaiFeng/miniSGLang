@@ -17,6 +17,7 @@ from minisgl.env import ENV
 from minisgl.utils import div_even, init_logger
 
 from .base import BaseAttnBackend, BaseAttnMetadata
+from .mixed import MixedAttnMetadata, maybe_prepare_mixed_metadata
 from .utils import BaseCaptureData
 
 if TYPE_CHECKING:
@@ -250,6 +251,19 @@ class FlashInferBackend(BaseAttnBackend):
             return cache.view(-1, 1, cache.shape[2], cache.shape[3])
 
         metadata = batch.attn_metadata
+        if isinstance(metadata, MixedAttnMetadata):
+            # 本步新产生的 K/V 仍属于 normal pool。mixed kernel 会在同一个
+            # CUDA stream 上随后读取它们和 compressed pool，不会执行完整 restore。
+            from minisgl.kernel import mixed_paged_attention
+
+            self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
+            return mixed_paged_attention(
+                q=q,
+                normal_k=self.kvcache.k_cache(layer_id),
+                normal_v=self.kvcache.v_cache(layer_id),
+                metadata=metadata,
+                layer_id=layer_id,
+            )
         assert isinstance(metadata, FIMetadata)
         self._initialize_metadata_once(metadata)
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
@@ -264,6 +278,9 @@ class FlashInferBackend(BaseAttnBackend):
         可以直接作为 paged_kv_indices。indices shape 是所有 req.device_len 拼接后的
         [sum_k]，其中 sum_k=sum(req.device_len for req in padded_reqs)。
         """
+
+        if maybe_prepare_mixed_metadata(batch):
+            return
 
         reqs = batch.padded_reqs
 
@@ -338,6 +355,12 @@ class FlashInferBackend(BaseAttnBackend):
         随后调用 prepare_metadata() 并将 metadata.wrapper 替换成 graph wrapper。
         """
 
+        if getattr(batch, "_mixed_kv_spec", None) is not None:
+            raise RuntimeError(
+                "Mixed KV Attention currently supports eager execution only; "
+                "CUDA Graph capture needs fixed-capacity descriptor buffers"
+            )
+
         from flashinfer import CUDAGraphBatchDecodeWithPagedKVCacheWrapper
 
         bs = batch.size
@@ -367,6 +390,8 @@ class FlashInferBackend(BaseAttnBackend):
         """
 
         metadata, bs = batch.attn_metadata, batch.padded_size
+        if isinstance(metadata, MixedAttnMetadata):
+            raise RuntimeError("Mixed KV Attention CUDA Graph replay is not implemented")
         assert isinstance(metadata, FIMetadata) and not metadata.initialized
         assert self.capture is not None and bs in self.capture_bs
         metadata.wrapper = self.graph_wrappers[bs]

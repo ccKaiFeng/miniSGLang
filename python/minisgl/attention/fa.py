@@ -13,6 +13,7 @@ from minisgl.core import Batch, get_global_ctx
 from minisgl.utils import is_sm100_supported
 
 from .base import BaseAttnBackend, BaseAttnMetadata
+from .mixed import MixedAttnMetadata, maybe_prepare_mixed_metadata
 from .utils import BaseCaptureData
 
 if TYPE_CHECKING:
@@ -82,6 +83,17 @@ class FlashAttentionBackend(BaseAttnBackend):
         """
 
         metadata = batch.attn_metadata
+        if isinstance(metadata, MixedAttnMetadata):
+            from minisgl.kernel import mixed_paged_attention
+
+            self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
+            return mixed_paged_attention(
+                q=q,
+                normal_k=self.kvcache.k_cache(layer_id),
+                normal_v=self.kvcache.v_cache(layer_id),
+                metadata=metadata,
+                layer_id=layer_id,
+            )
         assert isinstance(metadata, FAMetadata)
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
         return _fa_sgl_impl(
@@ -103,6 +115,9 @@ class FlashAttentionBackend(BaseAttnBackend):
         padded_size = len(batch.padded_reqs)，可能大于真实 batch.size。
         seqlens_q[i] = req.extend_len；seqlens_k[i] = req.device_len。
         """
+
+        if maybe_prepare_mixed_metadata(batch):
+            return
 
         reqs = batch.padded_reqs
 
@@ -165,6 +180,11 @@ class FlashAttentionBackend(BaseAttnBackend):
         这里不拷贝动态数据，只构造指向 capture buffer slice 的 FAMetadata。
         """
 
+        if getattr(batch, "_mixed_kv_spec", None) is not None:
+            raise RuntimeError(
+                "Mixed KV Attention currently supports eager execution only; "
+                "CUDA Graph capture needs fixed-capacity descriptor buffers"
+            )
         assert (bs := batch.size) in self.capture_bs and self.capture
         capture = self.capture
         metadata = FAMetadata(
@@ -185,6 +205,8 @@ class FlashAttentionBackend(BaseAttnBackend):
         """
 
         metadata, bs = batch.attn_metadata, batch.padded_size
+        if isinstance(metadata, MixedAttnMetadata):
+            raise RuntimeError("Mixed KV Attention CUDA Graph replay is not implemented")
         assert isinstance(metadata, FAMetadata)
         assert self.capture is not None and bs in self.capture_bs
         # cu_seqlens_q is always [0, 1, 2, ..., bs] for decode (i.e. no-op)
