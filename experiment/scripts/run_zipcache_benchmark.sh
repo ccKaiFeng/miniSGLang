@@ -75,17 +75,42 @@ die() {
 cleanup_server() {
     if [[ -n "${SERVER_PID}" ]] && kill -0 "${SERVER_PID}" 2>/dev/null; then
         log "Stopping server (PID ${SERVER_PID})..."
-        kill "${SERVER_PID}" 2>/dev/null || true
-        sleep 5
+        # Kill entire process group (parent + multiprocessing children)
+        local pgid
+        pgid=$(ps -o pgid= -p "${SERVER_PID}" 2>/dev/null | tr -d ' ')
+        if [[ -n "${pgid}" ]]; then
+            kill -TERM -"${pgid}" 2>/dev/null || true
+            sleep 3
+            kill -KILL -"${pgid}" 2>/dev/null || true
+        fi
         kill -9 "${SERVER_PID}" 2>/dev/null || true
         SERVER_PID=""
     fi
-    # Fallback: kill anything on the ports
+
+    # Fallback: kill all minisgl processes (catches orphaned children)
+    pkill -9 -f "python.*minisgl" 2>/dev/null || true
+
     if command -v fuser >/dev/null 2>&1; then
         fuser -k "${PORT_MAIN}/tcp" 2>/dev/null || true
         fuser -k "${PORT_ZIPCACHE}/tcp" 2>/dev/null || true
     fi
-    sleep 3
+
+    sleep 5
+
+    # Wait for GPU memory to be fully released
+    log "Waiting for GPU memory to be released..."
+    local gpu_wait=0
+    while (( gpu_wait < 60 )); do
+        local used_mb
+        used_mb=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
+        if [[ -z "${used_mb}" ]] || (( used_mb < 1000 )); then
+            log "GPU memory released (${used_mb:-0}MB used)."
+            break
+        fi
+        log "  GPU still using ${used_mb}MB, waiting... (${gpu_wait}s)"
+        sleep 5
+        gpu_wait=$((gpu_wait + 5))
+    done
 }
 
 wait_for_server() {
@@ -94,7 +119,7 @@ wait_for_server() {
     local start=$(date +%s)
     log "Waiting for server on port ${port} (timeout ${timeout}s)..."
     while true; do
-        if curl -sf "http://127.0.0.1:${port}/v1" 2>/dev/null | grep -q "ok"; then
+        if curl -sf --connect-timeout 5 --max-time 10 "http://127.0.0.1:${port}/v1" 2>/dev/null | grep -q "ok"; then
             log "Server ready on port ${port}."
             return 0
         fi
