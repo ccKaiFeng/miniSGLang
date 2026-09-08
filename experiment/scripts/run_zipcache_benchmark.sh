@@ -82,7 +82,7 @@ cleanup_server() {
     fi
 
     # Fallback: kill all minisgl processes (catches orphaned children)
-    pkill -9 -f "python.*minisgl" 2>/dev/null || true
+    pkill -9 -f "minisgl" 2>/dev/null || true
 
     if command -v fuser >/dev/null 2>&1; then
         fuser -k "${PORT_MAIN}/tcp" 2>/dev/null || true
