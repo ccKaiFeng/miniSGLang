@@ -1,0 +1,98 @@
+{
+  "mode": "main_8b_25gb",
+  "base_url": "http://127.0.0.1:30000",
+  "run_dir": "experiment/logs/20260908_095153_main_8b_25gb",
+  "manifest": {
+    "mode": "main_8b_25gb",
+    "preset": "full",
+    "max_samples_override": 32,
+    "base_url": "http://127.0.0.1:30000",
+    "started_at": "2026-09-08 09:51:53",
+    "run_dir": "experiment/logs/20260908_095153_main_8b_25gb",
+    "server_check": {
+      "ok": true,
+      "url": "http://127.0.0.1:30000/v1",
+      "latency_s": 0.010263491421937943,
+      "response": "{\"status\":\"ok\"}"
+    },
+    "experiments": [
+      {
+        "name": "longbench_long_context_pressure",
+        "dataset": "workloads/longbench_long_context_pressure.jsonl",
+        "concurrency": 8,
+        "repeat": 1,
+        "max_tokens": 256,
+        "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
+        "sample_limit": 32
+      }
+    ],
+    "git_branch": "main",
+    "git_commit": "2d4f201",
+    "git_describe": "2d4f201"
+  },
+  "experiments": [
+    {
+      "name": "longbench_long_context_pressure",
+      "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
+      "result_file": "experiment/logs/20260908_095153_main_8b_25gb/longbench_long_context_pressure.jsonl",
+      "summary_file": "experiment/logs/20260908_095153_main_8b_25gb/longbench_long_context_pressure_summary.json",
+      "log_file": "experiment/logs/20260908_095153_main_8b_25gb/longbench_long_context_pressure.log",
+      "summary": {
+        "num_requests": 32,
+        "num_ok": 32,
+        "num_failed": 0,
+        "total_wall_time_s": 30.340044021606445,
+        "request_throughput_rps": 1.0547117195087596,
+        "output_chunk_throughput_cps": 268.9185287334991,
+        "output_chunks": 8159,
+        "ttft_avg_s": 2.158177491510287,
+        "ttft_p50_s": 2.264529623091221,
+        "ttft_p90_s": 3.5362276770174503,
+        "ttft_p99_s": 3.8814017958939075,
+        "e2e_avg_s": 7.583615922369063,
+        "e2e_p50_s": 7.7626616433262825,
+        "e2e_p90_s": 7.897575780749321,
+        "e2e_p99_s": 7.900335595011711,
+        "tpot_avg_s": 0.021362063740848654,
+        "tpot_p50_s": 0.021189661447222778,
+        "tpot_p90_s": 0.02667001580570157,
+        "tpot_p99_s": 0.02885026998055263,
+        "finish_reasons": {
+          "stop": 32
+        },
+        "num_reached_max_tokens": 0,
+        "gpu_samples": 55,
+        "gpu_memory_used_mb_min": 43247,
+        "gpu_memory_used_mb_max": 43247,
+        "gpu_memory_used_mb_avg": 43247
+      },
+      "compact_summary": {
+        "num_requests": 32,
+        "num_ok": 32,
+        "num_failed": 0,
+        "request_throughput_rps": 1.0547117195087596,
+        "output_chunk_throughput_cps": 268.9185287334991,
+        "ttft_avg_s": 2.158177491510287,
+        "ttft_p50_s": 2.264529623091221,
+        "ttft_p90_s": 3.5362276770174503,
+        "e2e_avg_s": 7.583615922369063,
+        "e2e_p50_s": 7.7626616433262825,
+        "e2e_p90_s": 7.897575780749321,
+        "tpot_avg_s": 0.021362063740848654,
+        "tpot_p50_s": 0.021189661447222778,
+        "tpot_p90_s": 0.02667001580570157,
+        "gpu_memory_used_mb_min": 43247,
+        "gpu_memory_used_mb_max": 43247,
+        "gpu_memory_used_mb_avg": 43247,
+        "finish_reasons": {
+          "stop": 32
+        },
+        "num_reached_max_tokens": 0
+      }
+    }
+  ],
+  "zipcache_stats": {
+    "num_stats": 0,
+    "message": "No [ZipCacheV1]/[ZipCacheV2]/[ZipCacheV3]/[ZipCacheV4] stats found."
+  }
+}

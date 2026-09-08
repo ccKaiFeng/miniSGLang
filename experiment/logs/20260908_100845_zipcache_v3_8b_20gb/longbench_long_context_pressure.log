@@ -1,0 +1,2 @@
+$ /root/miniconda3/envs/minisgl-ZipCache/bin/python /root/autodl-tmp/miniSGLang/experiment/bench_openai_stream.py --base-url http://127.0.0.1:30001 --dataset /root/autodl-tmp/miniSGLang/experiment/workloads/longbench_long_context_pressure.jsonl --output experiment/logs/20260908_100845_zipcache_v3_8b_20gb/longbench_long_context_pressure.jsonl --summary experiment/logs/20260908_100845_zipcache_v3_8b_20gb/longbench_long_context_pressure_summary.json --concurrency 8 --repeat 1 --model minisgl --timeout 1200.0 --gpu-sample-interval 0.5 --max-tokens 256 --limit 32
+

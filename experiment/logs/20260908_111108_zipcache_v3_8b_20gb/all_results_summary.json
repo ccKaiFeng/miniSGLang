@@ -1,0 +1,151 @@
+{
+  "mode": "zipcache_v3_8b_20gb",
+  "base_url": "http://127.0.0.1:30001",
+  "run_dir": "experiment/logs/20260908_111108_zipcache_v3_8b_20gb",
+  "manifest": {
+    "mode": "zipcache_v3_8b_20gb",
+    "preset": "full",
+    "max_samples_override": 64,
+    "base_url": "http://127.0.0.1:30001",
+    "started_at": "2026-09-08 11:11:08",
+    "run_dir": "experiment/logs/20260908_111108_zipcache_v3_8b_20gb",
+    "server_check": {
+      "ok": true,
+      "url": "http://127.0.0.1:30001/v1",
+      "latency_s": 0.009829312562942505,
+      "response": "{\"status\":\"ok\"}"
+    },
+    "experiments": [
+      {
+        "name": "public_shared_prefix_serial",
+        "dataset": "workloads/public_shared_prefix.jsonl",
+        "concurrency": 1,
+        "repeat": 3,
+        "max_tokens": 128,
+        "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+        "sample_limit": 64
+      }
+    ],
+    "git_branch": "zipcache-v3-quick-results",
+    "git_commit": "2f197ba",
+    "git_describe": "2f197ba"
+  },
+  "experiments": [
+    {
+      "name": "public_shared_prefix_serial",
+      "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+      "result_file": "experiment/logs/20260908_111108_zipcache_v3_8b_20gb/public_shared_prefix_serial.jsonl",
+      "summary_file": "experiment/logs/20260908_111108_zipcache_v3_8b_20gb/public_shared_prefix_serial_summary.json",
+      "log_file": "experiment/logs/20260908_111108_zipcache_v3_8b_20gb/public_shared_prefix_serial.log",
+      "summary": {
+        "num_requests": 192,
+        "num_ok": 192,
+        "num_failed": 0,
+        "total_wall_time_s": 333.58894634246826,
+        "request_throughput_rps": 0.5755586391729222,
+        "output_chunk_throughput_cps": 73.09294947371544,
+        "output_chunks": 24383,
+        "ttft_avg_s": 0.19543177190159136,
+        "ttft_p50_s": 0.09275688230991364,
+        "ttft_p90_s": 0.37701408192515373,
+        "ttft_p99_s": 0.4728976599872112,
+        "e2e_avg_s": 1.7373367941666704,
+        "e2e_p50_s": 1.6000265665352345,
+        "e2e_p90_s": 1.9985293038189411,
+        "e2e_p99_s": 2.1204482950270176,
+        "tpot_avg_s": 0.012237831749093457,
+        "tpot_p50_s": 0.011812796136216512,
+        "tpot_p90_s": 0.012888995546197135,
+        "tpot_p99_s": 0.013743362640814176,
+        "finish_reasons": {
+          "stop": 192
+        },
+        "num_reached_max_tokens": 0,
+        "gpu_samples": 591,
+        "gpu_memory_used_mb_min": 43741,
+        "gpu_memory_used_mb_max": 44267,
+        "gpu_memory_used_mb_avg": 44259.19627749577
+      },
+      "compact_summary": {
+        "num_requests": 192,
+        "num_ok": 192,
+        "num_failed": 0,
+        "request_throughput_rps": 0.5755586391729222,
+        "output_chunk_throughput_cps": 73.09294947371544,
+        "ttft_avg_s": 0.19543177190159136,
+        "ttft_p50_s": 0.09275688230991364,
+        "ttft_p90_s": 0.37701408192515373,
+        "e2e_avg_s": 1.7373367941666704,
+        "e2e_p50_s": 1.6000265665352345,
+        "e2e_p90_s": 1.9985293038189411,
+        "tpot_avg_s": 0.012237831749093457,
+        "tpot_p50_s": 0.011812796136216512,
+        "tpot_p90_s": 0.012888995546197135,
+        "gpu_memory_used_mb_min": 43741,
+        "gpu_memory_used_mb_max": 44267,
+        "gpu_memory_used_mb_avg": 44259.19627749577,
+        "finish_reasons": {
+          "stop": 192
+        },
+        "num_reached_max_tokens": 0
+      }
+    }
+  ],
+  "zipcache_stats": {
+    "num_stats": 31,
+    "versions": [
+      "ZipCacheV3"
+    ],
+    "last": {
+      "num_demotions": 148,
+      "num_demote_failures": 459,
+      "num_compressed_entries": 148,
+      "num_compressed_hits": 148,
+      "num_restore_attempts": 148,
+      "num_restore_success": 148,
+      "num_restore_fallback": 0,
+      "num_compressed_freed": 0,
+      "num_temporary_restore_pages": 2638,
+      "num_restore_pages_released": 2638,
+      "num_restore_rejected_small_prefix": 0,
+      "original_estimated_bytes": 42767400960,
+      "compressed_estimated_bytes_4bit": 9389868480,
+      "compressed_storage_bytes": 9389868480,
+      "active_original_estimated_bytes": 42767400960,
+      "active_compressed_estimated_bytes_4bit": 9389868480,
+      "active_compressed_storage_bytes": 9389868480,
+      "last_estimated_compression_ratio": 4.515603799185889,
+      "last_storage_compression_ratio": 4.515603799185889,
+      "num_demote_rejected_pool_full": 459,
+      "active_estimated_compression_ratio": 4.55463258629156,
+      "active_storage_compression_ratio": 4.55463258629156,
+      "gpu_memory_allocated_bytes": 44682040320,
+      "gpu_memory_reserved_bytes": 45847937024,
+      "gpu_max_memory_allocated_bytes": 45085051392,
+      "gpu_max_memory_reserved_bytes": 45847937024,
+      "compressed_pool_capacity_bytes": 14260633600,
+      "compressed_pool_used_bytes": 9389868480,
+      "compressed_pool_free_bytes": 4870765120,
+      "compressed_pool_utilization": 0.6584467943976907,
+      "compressed_pool_q_used_bytes": 8554567680,
+      "compressed_pool_q4_used_bytes": 6417285120,
+      "compressed_pool_q2_used_bytes": 2137282560,
+      "compressed_pool_scale_used_bytes": 668240640,
+      "compressed_pool_ids_used_bytes": 167060160,
+      "compressed_pool_q4_capacity_bytes": 6417285120,
+      "compressed_pool_q2_capacity_bytes": 2139095040,
+      "compressed_pool_scale_capacity_bytes": 3565158400,
+      "compressed_pool_ids_capacity_bytes": 2139095040,
+      "normal_pool_capacity_bytes": 13861011456,
+      "estimated_effective_kv_capacity_bytes": 78812957951.72432,
+      "estimated_capacity_gain_vs_normal_pool": 5.685945661462435,
+      "_zipcache_version": "ZipCacheV3"
+    },
+    "max_active_compression_ratio": 4.554799620128809,
+    "last_active_compression_ratio": 4.55463258629156,
+    "max_active_original_estimated_bytes": 42767400960,
+    "max_active_compressed_estimated_bytes": 9389868480,
+    "max_num_compressions_or_demotions": 148,
+    "max_num_decompressions_or_restores": 148
+  }
+}

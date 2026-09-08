@@ -1,0 +1,29 @@
+{
+  "num_requests": 32,
+  "num_ok": 32,
+  "num_failed": 0,
+  "total_wall_time_s": 30.645203590393066,
+  "request_throughput_rps": 1.0442090849751002,
+  "output_chunk_throughput_cps": 266.2733166686506,
+  "output_chunks": 8160,
+  "ttft_avg_s": 2.187011174042709,
+  "ttft_p50_s": 2.1674306951463223,
+  "ttft_p90_s": 3.490138541907072,
+  "ttft_p99_s": 3.9535158686339855,
+  "e2e_avg_s": 7.6598445436684415,
+  "e2e_p50_s": 7.8275312930345535,
+  "e2e_p90_s": 7.973766215145588,
+  "e2e_p99_s": 7.9748068898916245,
+  "tpot_avg_s": 0.021546588069392646,
+  "tpot_p50_s": 0.021366327062366516,
+  "tpot_p90_s": 0.026889029934298335,
+  "tpot_p99_s": 0.029039649776821063,
+  "finish_reasons": {
+    "stop": 32
+  },
+  "num_reached_max_tokens": 0,
+  "gpu_samples": 54,
+  "gpu_memory_used_mb_min": 43247,
+  "gpu_memory_used_mb_max": 43247,
+  "gpu_memory_used_mb_avg": 43247
+}

@@ -1,0 +1,93 @@
+# miniSGLang Experiment Report: zipcache_v3_8b_20gb
+
+- mode: `zipcache_v3_8b_20gb`
+- base_url: `http://127.0.0.1:30001`
+- run_dir: `experiment/logs/20260908_100258_zipcache_v3_8b_20gb`
+- started_at: `2026-09-08 10:02:58`
+- git_branch: `zipcache-v3-quick-results`
+- git_commit: `c47b9bb`
+
+## Server Check
+
+```json
+{
+  "ok": true,
+  "url": "http://127.0.0.1:30001/v1",
+  "latency_s": 0.009181011468172073,
+  "response": "{\"status\":\"ok\"}"
+}
+```
+
+## Experiments
+
+| experiment | ok/total | maxed | rps | chunks/s | ttft avg | ttft p90 | e2e avg | tpot avg | gpu max MB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| public_shared_prefix_serial | 192/192 | 0 | 0.5532 | 70.26 | 0.2433 | 0.393 | 1.807 | 0.01241 | 42851 |
+
+## Result Files
+
+- `public_shared_prefix_serial` results: `experiment/logs/20260908_100258_zipcache_v3_8b_20gb/public_shared_prefix_serial.jsonl`
+- `public_shared_prefix_serial` summary: `experiment/logs/20260908_100258_zipcache_v3_8b_20gb/public_shared_prefix_serial_summary.json`
+- `public_shared_prefix_serial` log: `experiment/logs/20260908_100258_zipcache_v3_8b_20gb/public_shared_prefix_serial.log`
+
+## ZipCache Stats
+
+```json
+{
+  "num_stats": 32,
+  "versions": [
+    "ZipCacheV3"
+  ],
+  "last": {
+    "num_demotions": 202,
+    "num_demote_failures": 255,
+    "num_compressed_entries": 202,
+    "num_compressed_hits": 117,
+    "num_restore_attempts": 117,
+    "num_restore_success": 117,
+    "num_restore_fallback": 0,
+    "num_compressed_freed": 0,
+    "num_temporary_restore_pages": 1881,
+    "num_restore_pages_released": 1881,
+    "num_restore_rejected_small_prefix": 0,
+    "original_estimated_bytes": 64404504576,
+    "compressed_estimated_bytes_4bit": 14140301760,
+    "compressed_storage_bytes": 14140301760,
+    "active_original_estimated_bytes": 64404504576,
+    "active_compressed_estimated_bytes_4bit": 14140301760,
+    "active_compressed_storage_bytes": 14140301760,
+    "last_estimated_compression_ratio": 4.388571428571429,
+    "last_storage_compression_ratio": 4.388571428571429,
+    "num_demote_rejected_pool_full": 255,
+    "active_estimated_compression_ratio": 4.554676814478392,
+    "active_storage_compression_ratio": 4.554676814478392,
+    "gpu_memory_allocated_bytes": 43197339648,
+    "gpu_memory_reserved_bytes": 44363153408,
+    "gpu_max_memory_allocated_bytes": 43600103936,
+    "gpu_max_memory_reserved_bytes": 44363153408,
+    "compressed_pool_capacity_bytes": 21474836480,
+    "compressed_pool_used_bytes": 14140301760,
+    "compressed_pool_free_bytes": 7334534720,
+    "compressed_pool_utilization": 0.6584591120481491,
+    "compressed_pool_q_used_bytes": 12882401280,
+    "compressed_pool_q4_used_bytes": 9663676416,
+    "compressed_pool_q2_used_bytes": 3218724864,
+    "compressed_pool_scale_used_bytes": 1006320384,
+    "compressed_pool_ids_used_bytes": 251580096,
+    "compressed_pool_q4_capacity_bytes": 9663676416,
+    "compressed_pool_q2_capacity_bytes": 3221225472,
+    "compressed_pool_scale_capacity_bytes": 5368709120,
+    "compressed_pool_ids_capacity_bytes": 3221225472,
+    "normal_pool_capacity_bytes": 5161107456,
+    "estimated_effective_kv_capacity_bytes": 102972047266.17076,
+    "estimated_capacity_gain_vs_normal_pool": 19.951541048900562,
+    "_zipcache_version": "ZipCacheV3"
+  },
+  "max_active_compression_ratio": 4.554804707123074,
+  "last_active_compression_ratio": 4.554676814478392,
+  "max_active_original_estimated_bytes": 64404504576,
+  "max_active_compressed_estimated_bytes": 14140301760,
+  "max_num_compressions_or_demotions": 202,
+  "max_num_decompressions_or_restores": 117
+}
+```

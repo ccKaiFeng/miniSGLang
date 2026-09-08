@@ -1,0 +1,151 @@
+{
+  "mode": "zipcache_v3_8b_20gb",
+  "base_url": "http://127.0.0.1:30001",
+  "run_dir": "experiment/logs/20260908_111642_zipcache_v3_8b_20gb",
+  "manifest": {
+    "mode": "zipcache_v3_8b_20gb",
+    "preset": "full",
+    "max_samples_override": 32,
+    "base_url": "http://127.0.0.1:30001",
+    "started_at": "2026-09-08 11:16:42",
+    "run_dir": "experiment/logs/20260908_111642_zipcache_v3_8b_20gb",
+    "server_check": {
+      "ok": true,
+      "url": "http://127.0.0.1:30001/v1",
+      "latency_s": 0.009562447667121887,
+      "response": "{\"status\":\"ok\"}"
+    },
+    "experiments": [
+      {
+        "name": "longbench_long_context_pressure",
+        "dataset": "workloads/longbench_long_context_pressure.jsonl",
+        "concurrency": 8,
+        "repeat": 1,
+        "max_tokens": 256,
+        "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
+        "sample_limit": 32
+      }
+    ],
+    "git_branch": "zipcache-v3-quick-results",
+    "git_commit": "2f197ba",
+    "git_describe": "2f197ba"
+  },
+  "experiments": [
+    {
+      "name": "longbench_long_context_pressure",
+      "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
+      "result_file": "experiment/logs/20260908_111642_zipcache_v3_8b_20gb/longbench_long_context_pressure.jsonl",
+      "summary_file": "experiment/logs/20260908_111642_zipcache_v3_8b_20gb/longbench_long_context_pressure_summary.json",
+      "log_file": "experiment/logs/20260908_111642_zipcache_v3_8b_20gb/longbench_long_context_pressure.log",
+      "summary": {
+        "num_requests": 32,
+        "num_ok": 32,
+        "num_failed": 0,
+        "total_wall_time_s": 31.3255512714386,
+        "request_throughput_rps": 1.0215303067683388,
+        "output_chunk_throughput_cps": 260.4583054038399,
+        "output_chunks": 8159,
+        "ttft_avg_s": 2.2071020799921826,
+        "ttft_p50_s": 2.2977534905076027,
+        "ttft_p90_s": 3.6158339008688927,
+        "ttft_p99_s": 3.961421385407448,
+        "e2e_avg_s": 7.829640156705864,
+        "e2e_p50_s": 8.013013482093811,
+        "e2e_p90_s": 8.150743760168552,
+        "e2e_p99_s": 8.153943553566933,
+        "tpot_avg_s": 0.022138334739504547,
+        "tpot_p50_s": 0.02245763164218955,
+        "tpot_p90_s": 0.02777527705362932,
+        "tpot_p99_s": 0.030007445568761486,
+        "finish_reasons": {
+          "stop": 32
+        },
+        "num_reached_max_tokens": 0,
+        "gpu_samples": 56,
+        "gpu_memory_used_mb_min": 44267,
+        "gpu_memory_used_mb_max": 44331,
+        "gpu_memory_used_mb_avg": 44314.53571428572
+      },
+      "compact_summary": {
+        "num_requests": 32,
+        "num_ok": 32,
+        "num_failed": 0,
+        "request_throughput_rps": 1.0215303067683388,
+        "output_chunk_throughput_cps": 260.4583054038399,
+        "ttft_avg_s": 2.2071020799921826,
+        "ttft_p50_s": 2.2977534905076027,
+        "ttft_p90_s": 3.6158339008688927,
+        "e2e_avg_s": 7.829640156705864,
+        "e2e_p50_s": 8.013013482093811,
+        "e2e_p90_s": 8.150743760168552,
+        "tpot_avg_s": 0.022138334739504547,
+        "tpot_p50_s": 0.02245763164218955,
+        "tpot_p90_s": 0.02777527705362932,
+        "gpu_memory_used_mb_min": 44267,
+        "gpu_memory_used_mb_max": 44331,
+        "gpu_memory_used_mb_avg": 44314.53571428572,
+        "finish_reasons": {
+          "stop": 32
+        },
+        "num_reached_max_tokens": 0
+      }
+    }
+  ],
+  "zipcache_stats": {
+    "num_stats": 33,
+    "versions": [
+      "ZipCacheV3"
+    ],
+    "last": {
+      "num_demotions": 148,
+      "num_demote_failures": 521,
+      "num_compressed_entries": 148,
+      "num_compressed_hits": 174,
+      "num_restore_attempts": 174,
+      "num_restore_success": 174,
+      "num_restore_fallback": 0,
+      "num_compressed_freed": 0,
+      "num_temporary_restore_pages": 3158,
+      "num_restore_pages_released": 3158,
+      "num_restore_rejected_small_prefix": 0,
+      "original_estimated_bytes": 42767400960,
+      "compressed_estimated_bytes_4bit": 9389868480,
+      "compressed_storage_bytes": 9389868480,
+      "active_original_estimated_bytes": 42767400960,
+      "active_compressed_estimated_bytes_4bit": 9389868480,
+      "active_compressed_storage_bytes": 9389868480,
+      "last_estimated_compression_ratio": 4.515603799185889,
+      "last_storage_compression_ratio": 4.515603799185889,
+      "num_demote_rejected_pool_full": 521,
+      "active_estimated_compression_ratio": 4.55463258629156,
+      "active_storage_compression_ratio": 4.55463258629156,
+      "gpu_memory_allocated_bytes": 44682257408,
+      "gpu_memory_reserved_bytes": 45915045888,
+      "gpu_max_memory_allocated_bytes": 45085170688,
+      "gpu_max_memory_reserved_bytes": 45915045888,
+      "compressed_pool_capacity_bytes": 14260633600,
+      "compressed_pool_used_bytes": 9389868480,
+      "compressed_pool_free_bytes": 4870765120,
+      "compressed_pool_utilization": 0.6584467943976907,
+      "compressed_pool_q_used_bytes": 8554567680,
+      "compressed_pool_q4_used_bytes": 6417285120,
+      "compressed_pool_q2_used_bytes": 2137282560,
+      "compressed_pool_scale_used_bytes": 668240640,
+      "compressed_pool_ids_used_bytes": 167060160,
+      "compressed_pool_q4_capacity_bytes": 6417285120,
+      "compressed_pool_q2_capacity_bytes": 2139095040,
+      "compressed_pool_scale_capacity_bytes": 3565158400,
+      "compressed_pool_ids_capacity_bytes": 2139095040,
+      "normal_pool_capacity_bytes": 13861011456,
+      "estimated_effective_kv_capacity_bytes": 78812957951.72432,
+      "estimated_capacity_gain_vs_normal_pool": 5.685945661462435,
+      "_zipcache_version": "ZipCacheV3"
+    },
+    "max_active_compression_ratio": 4.554799620128809,
+    "last_active_compression_ratio": 4.55463258629156,
+    "max_active_original_estimated_bytes": 42767400960,
+    "max_active_compressed_estimated_bytes": 9389868480,
+    "max_num_compressions_or_demotions": 148,
+    "max_num_decompressions_or_restores": 174
+  }
+}

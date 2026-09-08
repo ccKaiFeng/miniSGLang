@@ -1,0 +1,28 @@
+{
+  "mode": "zipcache_v3_8b_20gb",
+  "preset": "full",
+  "max_samples_override": 64,
+  "base_url": "http://127.0.0.1:30001",
+  "started_at": "2026-09-08 10:02:58",
+  "run_dir": "experiment/logs/20260908_100258_zipcache_v3_8b_20gb",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30001/v1",
+    "latency_s": 0.009181011468172073,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "public_shared_prefix_serial",
+      "dataset": "workloads/public_shared_prefix.jsonl",
+      "concurrency": 1,
+      "repeat": 3,
+      "max_tokens": 128,
+      "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+      "sample_limit": 64
+    }
+  ],
+  "git_branch": "zipcache-v3-quick-results",
+  "git_commit": "c47b9bb",
+  "git_describe": "c47b9bb"
+}

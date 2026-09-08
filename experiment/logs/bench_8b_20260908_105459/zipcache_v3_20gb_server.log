@@ -1,0 +1,1088 @@
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-08|11:10:56][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B', tp_info=DistributedInfo(rank=0, size=1), dtype=torch.bfloat16, max_running_req=8, attention_backend='auto', moe_backend='auto', cuda_graph_bs=None, cuda_graph_max_bs=0, page_size=1, memory_ratio=0.9, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=None, num_page_override=None, enable_zipcache_v3=True, enable_zipcache_cuda_graph=False, zipcache_unimportant_ratio=0.4, zipcache_k_important_bit=4, zipcache_k_unimportant_bit=2, zipcache_v_important_bit=4, zipcache_v_unimportant_bit=2, zipcache_protect_recent_tokens=1, zipcache_stats_interval=10.0, zipcache_v3_demote_on_finish=True, zipcache_v3_normal_pool_pages=94000, zipcache_v3_compressed_pool_mb=13600, zipcache_v3_compressed_pool_ratio=1.0, zipcache_v3_q4_pool_ratio=0.45, zipcache_v3_q2_pool_ratio=0.15, zipcache_v3_scale_pool_ratio=0.25, zipcache_v3_ids_pool_ratio=0.15, zipcache_v3_keep_compressed_after_restore=True, zipcache_v3_min_restore_tokens=0, max_extend_tokens=4096, cache_type='radix', offline_mode=False, _unique_suffix='.pid=26094', server_host='0.0.0.0', server_port=30001, num_tokenizer=0, silent_output=False)
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-08|11:10:58|core|rank=0][0m [32mINFO    [0m Auto-selected attention backend: fi
+[1m[2026-09-08|11:10:58|core|rank=0][0m [33mWARNING [0m CUDA Graph is disabled for ZipCache
+[1m[2026-09-08|11:10:59|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[1m[2026-09-08|11:10:59|core|rank=0][0m [32mINFO    [0m Free memory before loading model: 78.82 GiB
+Loading weights:   0%|          | 0/5 [00:00<?, ?it/s]Loading weights:  20%|██        | 1/5 [00:00<00:03,  1.20it/s]Loading weights:  40%|████      | 2/5 [00:01<00:02,  1.43it/s]Loading weights:  60%|██████    | 3/5 [00:02<00:01,  1.47it/s]Loading weights:  80%|████████  | 4/5 [00:02<00:00,  1.49it/s]Loading weights: 100%|██████████| 5/5 [00:03<00:00,  1.52it/s]Loading weights: 100%|██████████| 5/5 [00:03<00:00,  1.48it/s]
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] override normal KV pool pages: num_pages=94000
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m Allocating 94000 tokens for KV cache, K + V = 12.91 GiB
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] compressed pool initialized: capacity=14260633600 bytes, normal_kv_pool=13861011456 bytes
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] enabled: temporary GPU restore, k=4/2 bits, v=4/2 bits, unimportant_ratio=0.4, normal_pages=94000
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m Free memory after initialization: 36.56 GiB
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m CUDA graph is disabled.
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:11:03|initializer][0m [32mINFO    [0m Scheduler is ready
+[1m[2026-09-08|11:11:03|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 0, 'num_demote_failures': 0, 'num_compressed_entries': 0, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 0, 'compressed_estimated_bytes_4bit': 0, 'compressed_storage_bytes': 0, 'active_original_estimated_bytes': 0, 'active_compressed_estimated_bytes_4bit': 0, 'active_compressed_storage_bytes': 0, 'last_estimated_compression_ratio': 1.0, 'last_storage_compression_ratio': 1.0, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 1.0, 'active_storage_compression_ratio': 1.0, 'gpu_memory_allocated_bytes': 44672265728, 'gpu_memory_reserved_bytes': 45315260416, 'gpu_max_memory_allocated_bytes': 44672642048, 'gpu_max_memory_reserved_bytes': 45315260416, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 0, 'compressed_pool_free_bytes': 14260633600, 'compressed_pool_utilization': 0.0, 'compressed_pool_q_used_bytes': 0, 'compressed_pool_q4_used_bytes': 0, 'compressed_pool_q2_used_bytes': 0, 'compressed_pool_scale_used_bytes': 0, 'compressed_pool_ids_used_bytes': 0, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 28121645056.0, 'estimated_capacity_gain_vs_normal_pool': 2.0288306625579633}
+[1m[2026-09-08|11:11:03|FrontendAPI][0m [32mINFO    [0m API server is ready to serve on 0.0.0.0:30001
+INFO:     Started server process [26094]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:30001 (Press CTRL+C to quit)
+INFO:     127.0.0.1:36718 - "GET /v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36724 - "GET /v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36738 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:12|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:36750 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:14|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:11:14|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 4, 'num_demote_failures': 0, 'num_compressed_entries': 4, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 1478098944, 'compressed_estimated_bytes_4bit': 324518400, 'compressed_storage_bytes': 324518400, 'active_original_estimated_bytes': 1478098944, 'active_compressed_estimated_bytes_4bit': 324518400, 'active_compressed_storage_bytes': 324518400, 'last_estimated_compression_ratio': 4.55473559661418, 'last_storage_compression_ratio': 4.55473559661418, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554746183883564, 'active_storage_compression_ratio': 4.554746183883564, 'gpu_memory_allocated_bytes': 44680911360, 'gpu_memory_reserved_bytes': 45787119616, 'gpu_max_memory_allocated_bytes': 45083636224, 'gpu_max_memory_reserved_bytes': 45787119616, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 324518400, 'compressed_pool_free_bytes': 13936115200, 'compressed_pool_utilization': 0.022756239947150734, 'compressed_pool_q_used_bytes': 295649280, 'compressed_pool_q4_used_bytes': 221773824, 'compressed_pool_q2_used_bytes': 73875456, 'compressed_pool_scale_used_bytes': 23095296, 'compressed_pool_ids_used_bytes': 5773824, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814577925.36172, 'estimated_capacity_gain_vs_normal_pool': 5.686062534148282}
+INFO:     127.0.0.1:51596 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:16|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:51604 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:18|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:51608 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:20|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:51620 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:22|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:51632 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:24|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:50730 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:26|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:11:26|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 16, 'num_demote_failures': 0, 'num_compressed_entries': 16, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 5912543232, 'compressed_estimated_bytes_4bit': 1298113344, 'compressed_storage_bytes': 1298113344, 'active_original_estimated_bytes': 5912543232, 'active_compressed_estimated_bytes_4bit': 1298113344, 'active_compressed_storage_bytes': 1298113344, 'last_estimated_compression_ratio': 4.554841530054645, 'last_storage_compression_ratio': 4.554841530054645, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554720324945677, 'active_storage_compression_ratio': 4.554720324945677, 'gpu_memory_allocated_bytes': 44681075200, 'gpu_memory_reserved_bytes': 45787119616, 'gpu_max_memory_allocated_bytes': 45083841024, 'gpu_max_memory_reserved_bytes': 45787119616, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 1298113344, 'compressed_pool_free_bytes': 12962520256, 'compressed_pool_utilization': 0.09102774676154642, 'compressed_pool_q_used_bytes': 1182633984, 'compressed_pool_q4_used_bytes': 887132160, 'compressed_pool_q2_used_bytes': 295501824, 'compressed_pool_scale_used_bytes': 92383488, 'compressed_pool_ids_used_bytes': 23095872, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814209160.52324, 'estimated_capacity_gain_vs_normal_pool': 5.686035929680083}
+INFO:     127.0.0.1:50740 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:28|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:50750 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:30|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:50754 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:32|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:50756 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:34|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37904 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:36|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:11:36|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 26, 'num_demote_failures': 0, 'num_compressed_entries': 26, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 10417029120, 'compressed_estimated_bytes_4bit': 2287047744, 'compressed_storage_bytes': 2287047744, 'active_original_estimated_bytes': 10417029120, 'active_compressed_estimated_bytes_4bit': 2287047744, 'active_compressed_storage_bytes': 2287047744, 'last_estimated_compression_ratio': 4.555160142348755, 'last_storage_compression_ratio': 4.555160142348755, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554793028404745, 'active_storage_compression_ratio': 4.554793028404745, 'gpu_memory_allocated_bytes': 44681255424, 'gpu_memory_reserved_bytes': 45843742720, 'gpu_max_memory_allocated_bytes': 45084017152, 'gpu_max_memory_reserved_bytes': 45843742720, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 2287047744, 'compressed_pool_free_bytes': 11973585856, 'compressed_pool_utilization': 0.1603749039593865, 'compressed_pool_q_used_bytes': 2083590144, 'compressed_pool_q4_used_bytes': 1562923008, 'compressed_pool_q2_used_bytes': 520667136, 'compressed_pool_scale_used_bytes': 162766080, 'compressed_pool_ids_used_bytes': 40691520, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78815245957.91446, 'estimated_capacity_gain_vs_normal_pool': 5.686110729228046}
+INFO:     127.0.0.1:37920 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:38|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37936 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:40|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37940 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:43|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37952 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:45|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57456 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:47|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:11:47|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 36, 'num_demote_failures': 0, 'num_compressed_entries': 36, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 14426210304, 'compressed_estimated_bytes_4bit': 3167254656, 'compressed_storage_bytes': 3167254656, 'active_original_estimated_bytes': 14426210304, 'active_compressed_estimated_bytes_4bit': 3167254656, 'active_compressed_storage_bytes': 3167254656, 'last_estimated_compression_ratio': 4.554919497628885, 'last_storage_compression_ratio': 4.554919497628885, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554799620128809, 'active_storage_compression_ratio': 4.554799620128809, 'gpu_memory_allocated_bytes': 44681412096, 'gpu_memory_reserved_bytes': 45843742720, 'gpu_max_memory_allocated_bytes': 45084144640, 'gpu_max_memory_reserved_bytes': 45843742720, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 3167254656, 'compressed_pool_free_bytes': 11093378944, 'compressed_pool_utilization': 0.2220977513930377, 'compressed_pool_q_used_bytes': 2885492736, 'compressed_pool_q4_used_bytes': 2164432896, 'compressed_pool_q2_used_bytes': 721059840, 'compressed_pool_scale_used_bytes': 225409536, 'compressed_pool_ids_used_bytes': 56352384, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78815339960.07613, 'estimated_capacity_gain_vs_normal_pool': 5.686117510995882}
+INFO:     127.0.0.1:57464 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:48|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57474 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:50|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57476 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:52|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57484 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:54|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57162 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:56|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57166 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:11:58|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:11:58|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 48, 'num_demote_failures': 0, 'num_compressed_entries': 48, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 18351046656, 'compressed_estimated_bytes_4bit': 4028967360, 'compressed_storage_bytes': 4028967360, 'active_original_estimated_bytes': 18351046656, 'active_compressed_estimated_bytes_4bit': 4028967360, 'active_compressed_storage_bytes': 4028967360, 'last_estimated_compression_ratio': 4.555039733020536, 'last_storage_compression_ratio': 4.555039733020536, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.55477669990357, 'active_storage_compression_ratio': 4.55477669990357, 'gpu_memory_allocated_bytes': 44681555456, 'gpu_memory_reserved_bytes': 45843742720, 'gpu_max_memory_allocated_bytes': 45084305920, 'gpu_max_memory_reserved_bytes': 45843742720, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 4028967360, 'compressed_pool_free_bytes': 10231666240, 'compressed_pool_utilization': 0.28252372741699217, 'compressed_pool_q_used_bytes': 3670548480, 'compressed_pool_q4_used_bytes': 2753335296, 'compressed_pool_q2_used_bytes': 917213184, 'compressed_pool_scale_used_bytes': 286735104, 'compressed_pool_ids_used_bytes': 71683776, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78815013103.14197, 'estimated_capacity_gain_vs_normal_pool': 5.686093929965364}
+INFO:     127.0.0.1:57168 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:00|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57172 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:02|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:57174 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:04|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56804 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:06|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56810 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:08|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56814 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:10|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:12:10|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 60, 'num_demote_failures': 0, 'num_compressed_entries': 60, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 22058090496, 'compressed_estimated_bytes_4bit': 4842871488, 'compressed_storage_bytes': 4842871488, 'active_original_estimated_bytes': 22058090496, 'active_compressed_estimated_bytes_4bit': 4842871488, 'active_compressed_storage_bytes': 4842871488, 'last_estimated_compression_ratio': 4.554904684083929, 'last_storage_compression_ratio': 4.554904684083929, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.55475445727954, 'active_storage_compression_ratio': 4.55475445727954, 'gpu_memory_allocated_bytes': 44681478144, 'gpu_memory_reserved_bytes': 45843742720, 'gpu_max_memory_allocated_bytes': 45084305920, 'gpu_max_memory_reserved_bytes': 45843742720, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 4842871488, 'compressed_pool_free_bytes': 9417762112, 'compressed_pool_utilization': 0.3395972173354205, 'compressed_pool_q_used_bytes': 4412049408, 'compressed_pool_q4_used_bytes': 3309576192, 'compressed_pool_q2_used_bytes': 1102473216, 'compressed_pool_scale_used_bytes': 344657664, 'compressed_pool_ids_used_bytes': 86164416, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814695909.23038, 'estimated_capacity_gain_vs_normal_pool': 5.6860710460717465}
+INFO:     127.0.0.1:56822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:12|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56826 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:14|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56840 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:16|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:33472 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:18|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:33480 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:19|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:33488 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:21|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:12:21|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 72, 'num_demote_failures': 0, 'num_compressed_entries': 72, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 25816154112, 'compressed_estimated_bytes_4bit': 5667964992, 'compressed_storage_bytes': 5667964992, 'active_original_estimated_bytes': 25816154112, 'active_compressed_estimated_bytes_4bit': 5667964992, 'active_compressed_storage_bytes': 5667964992, 'last_estimated_compression_ratio': 4.5547855435723035, 'last_storage_compression_ratio': 4.5547855435723035, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554748335326345, 'active_storage_compression_ratio': 4.554748335326345, 'gpu_memory_allocated_bytes': 44681634816, 'gpu_memory_reserved_bytes': 45845839872, 'gpu_max_memory_allocated_bytes': 45084368896, 'gpu_max_memory_reserved_bytes': 45845839872, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 5667964992, 'compressed_pool_free_bytes': 8592668608, 'compressed_pool_utilization': 0.39745534111471736, 'compressed_pool_q_used_bytes': 5163743232, 'compressed_pool_q4_used_bytes': 3873447936, 'compressed_pool_q2_used_bytes': 1290295296, 'compressed_pool_scale_used_bytes': 403377408, 'compressed_pool_ids_used_bytes': 100844352, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814608606.29895, 'estimated_capacity_gain_vs_normal_pool': 5.686064747618585}
+INFO:     127.0.0.1:33502 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:23|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:33506 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:25|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56268 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:27|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56270 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:29|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56274 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:31|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:56286 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:33|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:12:33|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 84, 'num_demote_failures': 0, 'num_compressed_entries': 84, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 29762076672, 'compressed_estimated_bytes_4bit': 6534310464, 'compressed_storage_bytes': 6534310464, 'active_original_estimated_bytes': 29762076672, 'active_compressed_estimated_bytes_4bit': 6534310464, 'active_compressed_storage_bytes': 6534310464, 'last_estimated_compression_ratio': 4.555049845827895, 'last_storage_compression_ratio': 4.555049845827895, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554738688339128, 'active_storage_compression_ratio': 4.554738688339128, 'gpu_memory_allocated_bytes': 44681784320, 'gpu_memory_reserved_bytes': 45845839872, 'gpu_max_memory_allocated_bytes': 45084531712, 'gpu_max_memory_reserved_bytes': 45845839872, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 6534310464, 'compressed_pool_free_bytes': 7726323136, 'compressed_pool_utilization': 0.4582061812456916, 'compressed_pool_q_used_bytes': 5953019904, 'compressed_pool_q4_used_bytes': 4465520640, 'compressed_pool_q2_used_bytes': 1487499264, 'compressed_pool_scale_used_bytes': 465032448, 'compressed_pool_ids_used_bytes': 116258112, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814471034.1489, 'estimated_capacity_gain_vs_normal_pool': 5.686054822502334}
+INFO:     127.0.0.1:56290 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:35|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:53706 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:37|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:53710 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:39|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:53726 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:41|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:53736 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:43|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:53738 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:45|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:12:45|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 96, 'num_demote_failures': 0, 'num_compressed_entries': 96, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 34033729536, 'compressed_estimated_bytes_4bit': 7472138112, 'compressed_storage_bytes': 7472138112, 'active_original_estimated_bytes': 34033729536, 'active_compressed_estimated_bytes_4bit': 7472138112, 'active_compressed_storage_bytes': 7472138112, 'last_estimated_compression_ratio': 4.555160142348755, 'last_storage_compression_ratio': 4.555160142348755, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554751133593608, 'active_storage_compression_ratio': 4.554751133593608, 'gpu_memory_allocated_bytes': 44681959424, 'gpu_memory_reserved_bytes': 45845839872, 'gpu_max_memory_allocated_bytes': 45084687360, 'gpu_max_memory_reserved_bytes': 45845839872, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 7472138112, 'compressed_pool_free_bytes': 6788495488, 'compressed_pool_utilization': 0.5239695739746094, 'compressed_pool_q_used_bytes': 6807416832, 'compressed_pool_q4_used_bytes': 5106401280, 'compressed_pool_q2_used_bytes': 1701015552, 'compressed_pool_scale_used_bytes': 531777024, 'compressed_pool_ids_used_bytes': 132944256, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814648511.3631, 'estimated_capacity_gain_vs_normal_pool': 5.686067626561747}
+INFO:     127.0.0.1:36056 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:47|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:36060 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:49|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:36076 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:51|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:36092 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:53|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:36096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:55|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42502 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:57|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:12:57|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 108, 'num_demote_failures': 0, 'num_compressed_entries': 108, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 37701844992, 'compressed_estimated_bytes_4bit': 8277503616, 'compressed_storage_bytes': 8277503616, 'active_original_estimated_bytes': 37701844992, 'active_compressed_estimated_bytes_4bit': 8277503616, 'active_compressed_storage_bytes': 8277503616, 'last_estimated_compression_ratio': 4.554643659121006, 'last_storage_compression_ratio': 4.554643659121006, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554736154886628, 'active_storage_compression_ratio': 4.554736154886628, 'gpu_memory_allocated_bytes': 44682086912, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45084687360, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 8277503616, 'compressed_pool_free_bytes': 5983129984, 'compressed_pool_utilization': 0.5804443090102251, 'compressed_pool_q_used_bytes': 7541139456, 'compressed_pool_q4_used_bytes': 5656817664, 'compressed_pool_q2_used_bytes': 1884321792, 'compressed_pool_scale_used_bytes': 589091328, 'compressed_pool_ids_used_bytes': 147272832, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814434905.51105, 'estimated_capacity_gain_vs_normal_pool': 5.6860522160087195}
+INFO:     127.0.0.1:42516 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:12:59|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42526 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:01|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42542 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:03|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42546 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:05|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:54158 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:07|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:54164 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:09|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:09|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 120, 'num_demote_failures': 0, 'num_compressed_entries': 120, 'num_compressed_hits': 0, 'num_restore_attempts': 0, 'num_restore_success': 0, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 0, 'num_restore_pages_released': 0, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 41781952512, 'compressed_estimated_bytes_4bit': 9173306880, 'compressed_storage_bytes': 9173306880, 'active_original_estimated_bytes': 41781952512, 'active_compressed_estimated_bytes_4bit': 9173306880, 'active_compressed_storage_bytes': 9173306880, 'last_estimated_compression_ratio': 4.554720763219569, 'last_storage_compression_ratio': 4.554720763219569, 'num_demote_rejected_pool_full': 0, 'active_estimated_compression_ratio': 4.554731795040525, 'active_storage_compression_ratio': 4.554731795040525, 'gpu_memory_allocated_bytes': 44682259456, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45084987392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9173306880, 'compressed_pool_free_bytes': 5087326720, 'compressed_pool_utilization': 0.6432608211741728, 'compressed_pool_q_used_bytes': 8357253120, 'compressed_pool_q4_used_bytes': 6269018112, 'compressed_pool_q2_used_bytes': 2088235008, 'compressed_pool_scale_used_bytes': 652843008, 'compressed_pool_ids_used_bytes': 163210752, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78814372731.34323, 'estimated_capacity_gain_vs_normal_pool': 5.686047730465366}
+INFO:     127.0.0.1:54172 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:11|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:54188 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=123
+[1m[2026-09-08|11:13:13|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:54200 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:14|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:13:14|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:58226 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:13:16|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:58232 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=131
+[1m[2026-09-08|11:13:18|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:58236 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:20|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:20|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 131, 'num_demote_failures': 5, 'num_compressed_entries': 131, 'num_compressed_hits': 1, 'num_restore_attempts': 1, 'num_restore_success': 1, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 20, 'num_restore_pages_released': 20, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42599153664, 'compressed_estimated_bytes_4bit': 9352796544, 'compressed_storage_bytes': 9352796544, 'active_original_estimated_bytes': 42599153664, 'active_compressed_estimated_bytes_4bit': 9352796544, 'active_compressed_storage_bytes': 9352796544, 'last_estimated_compression_ratio': 4.436289500509684, 'last_storage_compression_ratio': 4.436289500509684, 'num_demote_rejected_pool_full': 5, 'active_estimated_compression_ratio': 4.554696925523113, 'active_storage_compression_ratio': 4.554696925523113, 'gpu_memory_allocated_bytes': 44682004992, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9352796544, 'compressed_pool_free_bytes': 4907837056, 'compressed_pool_utilization': 0.6558471948960248, 'compressed_pool_q_used_bytes': 8520781824, 'compressed_pool_q4_used_bytes': 6391775232, 'compressed_pool_q2_used_bytes': 2129006592, 'compressed_pool_scale_used_bytes': 665611776, 'compressed_pool_ids_used_bytes': 166402944, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78813875469.93161, 'estimated_capacity_gain_vs_normal_pool': 5.6860118556366634}
+INFO:     127.0.0.1:58240 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:22|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:58252 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:23|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:58262 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:25|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:25|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37302 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:27|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37312 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:28|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:28|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37318 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+[1m[2026-09-08|11:13:30|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:30|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 143, 'num_demote_failures': 11, 'num_compressed_entries': 143, 'num_compressed_hits': 7, 'num_restore_attempts': 7, 'num_restore_success': 7, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 140, 'num_restore_pages_released': 140, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42724933632, 'compressed_estimated_bytes_4bit': 9380505024, 'compressed_storage_bytes': 9380505024, 'active_original_estimated_bytes': 42724933632, 'active_compressed_estimated_bytes_4bit': 9380505024, 'active_compressed_storage_bytes': 9380505024, 'last_estimated_compression_ratio': 4.446650124069479, 'last_storage_compression_ratio': 4.446650124069479, 'num_demote_rejected_pool_full': 11, 'active_estimated_compression_ratio': 4.554651750911956, 'active_storage_compression_ratio': 4.554651750911956, 'gpu_memory_allocated_bytes': 44682017280, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9380505024, 'compressed_pool_free_bytes': 4880128576, 'compressed_pool_utilization': 0.6577901997285731, 'compressed_pool_q_used_bytes': 8546033664, 'compressed_pool_q4_used_bytes': 6410833920, 'compressed_pool_q2_used_bytes': 2135199744, 'compressed_pool_scale_used_bytes': 667577088, 'compressed_pool_ids_used_bytes': 166894272, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78813231251.35388, 'estimated_capacity_gain_vs_normal_pool': 5.685965378611536}
+INFO:     127.0.0.1:37326 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=149
+[1m[2026-09-08|11:13:32|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:37340 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+[1m[2026-09-08|11:13:34|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42880 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=155
+[1m[2026-09-08|11:13:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=154
+[1m[2026-09-08|11:13:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+[1m[2026-09-08|11:13:36|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42892 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=157
+[1m[2026-09-08|11:13:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=156
+[1m[2026-09-08|11:13:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+[1m[2026-09-08|11:13:37|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42908 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=159
+[1m[2026-09-08|11:13:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=158
+[1m[2026-09-08|11:13:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+[1m[2026-09-08|11:13:39|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42912 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:41|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=161
+[1m[2026-09-08|11:13:41|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=160
+[1m[2026-09-08|11:13:41|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+[1m[2026-09-08|11:13:41|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:41|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 147, 'num_demote_failures': 25, 'num_compressed_entries': 147, 'num_compressed_hits': 18, 'num_restore_attempts': 18, 'num_restore_success': 18, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 290, 'num_restore_pages_released': 290, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42765484032, 'compressed_estimated_bytes_4bit': 9389443968, 'compressed_storage_bytes': 9389443968, 'active_original_estimated_bytes': 42765484032, 'active_compressed_estimated_bytes_4bit': 9389443968, 'active_compressed_storage_bytes': 9389443968, 'last_estimated_compression_ratio': 4.436289500509684, 'last_storage_compression_ratio': 4.436289500509684, 'num_demote_rejected_pool_full': 25, 'active_estimated_compression_ratio': 4.554634350846365, 'active_storage_compression_ratio': 4.554634350846365, 'gpu_memory_allocated_bytes': 44682031104, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389443968, 'compressed_pool_free_bytes': 4871189632, 'compressed_pool_utilization': 0.6584170262953815, 'compressed_pool_q_used_bytes': 8554180608, 'compressed_pool_q4_used_bytes': 6416990208, 'compressed_pool_q2_used_bytes': 2137190400, 'compressed_pool_scale_used_bytes': 668210688, 'compressed_pool_ids_used_bytes': 167052672, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812983115.39386, 'estimated_capacity_gain_vs_normal_pool': 5.685947476890525}
+INFO:     127.0.0.1:42928 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=163
+[1m[2026-09-08|11:13:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+[1m[2026-09-08|11:13:42|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:42930 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:44|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=165
+[1m[2026-09-08|11:13:44|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=164
+[1m[2026-09-08|11:13:44|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:33458 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:44|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:46|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=167
+[1m[2026-09-08|11:13:46|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=166
+INFO:     127.0.0.1:33462 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:46|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=170
+[1m[2026-09-08|11:13:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=169
+[1m[2026-09-08|11:13:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:33468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:47|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=172
+[1m[2026-09-08|11:13:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=171
+[1m[2026-09-08|11:13:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:33480 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:49|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=174
+[1m[2026-09-08|11:13:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=173
+[1m[2026-09-08|11:13:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:33490 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:51|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:52|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=176
+[1m[2026-09-08|11:13:52|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=175
+[1m[2026-09-08|11:13:52|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:33494 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:52|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:52|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 44, 'num_compressed_entries': 148, 'num_compressed_hits': 27, 'num_restore_attempts': 27, 'num_restore_success': 27, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 442, 'num_restore_pages_released': 442, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 44, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682021376, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:13:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=178
+[1m[2026-09-08|11:13:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=177
+[1m[2026-09-08|11:13:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:33506 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:54|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:55|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=180
+[1m[2026-09-08|11:13:55|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=179
+[1m[2026-09-08|11:13:55|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:48690 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:55|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=182
+[1m[2026-09-08|11:13:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=181
+[1m[2026-09-08|11:13:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:48698 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:57|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:13:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=184
+[1m[2026-09-08|11:13:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=183
+INFO:     127.0.0.1:48704 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:13:59|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:00|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=187
+[1m[2026-09-08|11:14:00|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=186
+[1m[2026-09-08|11:14:00|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48712 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:00|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=189
+[1m[2026-09-08|11:14:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=188
+[1m[2026-09-08|11:14:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48728 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:02|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:03|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=191
+[1m[2026-09-08|11:14:03|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=190
+[1m[2026-09-08|11:14:03|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48738 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:03|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:03|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 64, 'num_compressed_entries': 148, 'num_compressed_hits': 34, 'num_restore_attempts': 34, 'num_restore_success': 34, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 582, 'num_restore_pages_released': 582, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 64, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682022400, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:14:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=193
+[1m[2026-09-08|11:14:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=192
+[1m[2026-09-08|11:14:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48652 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:05|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:06|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=195
+[1m[2026-09-08|11:14:06|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=194
+[1m[2026-09-08|11:14:06|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48660 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:06|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=197
+[1m[2026-09-08|11:14:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=196
+[1m[2026-09-08|11:14:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:08|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=199
+[1m[2026-09-08|11:14:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=198
+[1m[2026-09-08|11:14:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:48678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:10|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:11|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=202
+[1m[2026-09-08|11:14:11|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=201
+[1m[2026-09-08|11:14:11|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:48692 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:11|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=205
+[1m[2026-09-08|11:14:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=204
+[1m[2026-09-08|11:14:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:48696 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:13|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:14|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=207
+[1m[2026-09-08|11:14:14|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=206
+[1m[2026-09-08|11:14:14|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:14|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:49248 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:15|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:15|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 87, 'num_compressed_entries': 148, 'num_compressed_hits': 41, 'num_restore_attempts': 41, 'num_restore_success': 41, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 722, 'num_restore_pages_released': 722, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 87, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682026496, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:14:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=209
+[1m[2026-09-08|11:14:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=208
+[1m[2026-09-08|11:14:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:49258 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:16|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=211
+[1m[2026-09-08|11:14:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=210
+[1m[2026-09-08|11:14:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:49270 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:18|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=213
+[1m[2026-09-08|11:14:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=212
+[1m[2026-09-08|11:14:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:49276 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:19|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=215
+[1m[2026-09-08|11:14:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=214
+[1m[2026-09-08|11:14:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:49278 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:21|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=217
+[1m[2026-09-08|11:14:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=216
+[1m[2026-09-08|11:14:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:14:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:49294 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:22|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:24|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=219
+[1m[2026-09-08|11:14:24|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=218
+INFO:     127.0.0.1:58742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:24|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=222
+[1m[2026-09-08|11:14:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=221
+[1m[2026-09-08|11:14:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:58750 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:26|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:26|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 112, 'num_compressed_entries': 148, 'num_compressed_hits': 48, 'num_restore_attempts': 48, 'num_restore_success': 48, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 862, 'num_restore_pages_released': 862, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 112, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682033664, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:14:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=224
+[1m[2026-09-08|11:14:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=223
+[1m[2026-09-08|11:14:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:58762 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:27|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=226
+[1m[2026-09-08|11:14:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=225
+[1m[2026-09-08|11:14:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:58776 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:29|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=228
+[1m[2026-09-08|11:14:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=227
+[1m[2026-09-08|11:14:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:58784 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:30|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=230
+[1m[2026-09-08|11:14:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=229
+[1m[2026-09-08|11:14:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:58790 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:32|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=232
+[1m[2026-09-08|11:14:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=231
+[1m[2026-09-08|11:14:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:58806 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:34|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=234
+[1m[2026-09-08|11:14:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=233
+[1m[2026-09-08|11:14:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:59994 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:35|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=236
+[1m[2026-09-08|11:14:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=235
+INFO:     127.0.0.1:60004 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:37|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:37|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 132, 'num_compressed_entries': 148, 'num_compressed_hits': 55, 'num_restore_attempts': 55, 'num_restore_success': 55, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1002, 'num_restore_pages_released': 1002, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 132, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682031616, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:14:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=239
+[1m[2026-09-08|11:14:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=238
+[1m[2026-09-08|11:14:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60012 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:39|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=241
+[1m[2026-09-08|11:14:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=240
+[1m[2026-09-08|11:14:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60020 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:40|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=243
+[1m[2026-09-08|11:14:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=242
+[1m[2026-09-08|11:14:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60026 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:42|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=245
+[1m[2026-09-08|11:14:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=244
+[1m[2026-09-08|11:14:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60034 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:43|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=247
+[1m[2026-09-08|11:14:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=246
+[1m[2026-09-08|11:14:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:52224 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:45|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:46|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=249
+[1m[2026-09-08|11:14:46|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=248
+[1m[2026-09-08|11:14:46|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:52240 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:46|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=251
+[1m[2026-09-08|11:14:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=250
+[1m[2026-09-08|11:14:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:52250 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:48|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:48|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 153, 'num_compressed_entries': 148, 'num_compressed_hits': 62, 'num_restore_attempts': 62, 'num_restore_success': 62, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1142, 'num_restore_pages_released': 1142, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 153, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682034688, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:14:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=253
+[1m[2026-09-08|11:14:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=252
+[1m[2026-09-08|11:14:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:52252 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:50|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=255
+[1m[2026-09-08|11:14:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=254
+[1m[2026-09-08|11:14:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:52260 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:51|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=257
+[1m[2026-09-08|11:14:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=256
+[1m[2026-09-08|11:14:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:52270 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:53|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=259
+[1m[2026-09-08|11:14:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=258
+[1m[2026-09-08|11:14:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:56668 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:54|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=261
+[1m[2026-09-08|11:14:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=260
+[1m[2026-09-08|11:14:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:56670 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:56|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=263
+[1m[2026-09-08|11:14:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=123
+[1m[2026-09-08|11:14:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=262
+[1m[2026-09-08|11:14:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:56676 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:57|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=264
+[1m[2026-09-08|11:14:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:14:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:56678 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:14:59|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:14:59|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 181, 'num_compressed_entries': 148, 'num_compressed_hits': 69, 'num_restore_attempts': 69, 'num_restore_success': 69, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1282, 'num_restore_pages_released': 1282, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 181, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682041344, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:15:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=265
+[1m[2026-09-08|11:15:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:15:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:56688 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:01|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=267
+[1m[2026-09-08|11:15:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=131
+[1m[2026-09-08|11:15:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=266
+[1m[2026-09-08|11:15:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:56698 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:02|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=268
+[1m[2026-09-08|11:15:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:56714 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:04|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=269
+[1m[2026-09-08|11:15:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:43336 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:05|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=270
+[1m[2026-09-08|11:15:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:43344 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:07|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=271
+[1m[2026-09-08|11:15:09|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:43348 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:09|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=272
+[1m[2026-09-08|11:15:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:43364 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:10|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:10|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 198, 'num_compressed_entries': 148, 'num_compressed_hits': 82, 'num_restore_attempts': 82, 'num_restore_success': 82, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1458, 'num_restore_pages_released': 1458, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 198, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682039808, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:15:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=273
+[1m[2026-09-08|11:15:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:43378 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:12|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=274
+[1m[2026-09-08|11:15:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=133
+INFO:     127.0.0.1:43388 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:13|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=276
+[1m[2026-09-08|11:15:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=149
+[1m[2026-09-08|11:15:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=275
+[1m[2026-09-08|11:15:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:41798 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:15|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:17|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:41802 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:17|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=279
+[1m[2026-09-08|11:15:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=278
+[1m[2026-09-08|11:15:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=154
+[1m[2026-09-08|11:15:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=277
+[1m[2026-09-08|11:15:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:41818 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:18|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=282
+[1m[2026-09-08|11:15:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=281
+[1m[2026-09-08|11:15:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=156
+[1m[2026-09-08|11:15:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=280
+[1m[2026-09-08|11:15:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:41832 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:20|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=285
+[1m[2026-09-08|11:15:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=284
+[1m[2026-09-08|11:15:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=158
+[1m[2026-09-08|11:15:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=283
+[1m[2026-09-08|11:15:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:41834 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:21|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:21|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 222, 'num_compressed_entries': 148, 'num_compressed_hits': 96, 'num_restore_attempts': 96, 'num_restore_success': 96, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1640, 'num_restore_pages_released': 1640, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 222, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682046976, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:15:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=161
+[1m[2026-09-08|11:15:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=160
+[1m[2026-09-08|11:15:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=286
+[1m[2026-09-08|11:15:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:41846 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:23|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:25|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=163
+[1m[2026-09-08|11:15:25|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:58096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:25|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=165
+[1m[2026-09-08|11:15:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=164
+[1m[2026-09-08|11:15:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=287
+[1m[2026-09-08|11:15:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=151
+INFO:     127.0.0.1:58106 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:26|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:28|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=290
+[1m[2026-09-08|11:15:28|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=289
+[1m[2026-09-08|11:15:28|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=166
+[1m[2026-09-08|11:15:28|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=288
+[1m[2026-09-08|11:15:28|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:58116 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:28|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=170
+[1m[2026-09-08|11:15:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=169
+[1m[2026-09-08|11:15:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=291
+[1m[2026-09-08|11:15:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:58122 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:29|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:31|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=172
+[1m[2026-09-08|11:15:31|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=171
+[1m[2026-09-08|11:15:31|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=292
+[1m[2026-09-08|11:15:31|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:58134 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:31|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=295
+[1m[2026-09-08|11:15:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=294
+[1m[2026-09-08|11:15:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=173
+[1m[2026-09-08|11:15:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=293
+[1m[2026-09-08|11:15:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:58136 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:32|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:32|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 250, 'num_compressed_entries': 148, 'num_compressed_hits': 106, 'num_restore_attempts': 106, 'num_restore_success': 106, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1798, 'num_restore_pages_released': 1798, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 250, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682033664, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:15:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=298
+[1m[2026-09-08|11:15:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=297
+[1m[2026-09-08|11:15:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=175
+[1m[2026-09-08|11:15:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=296
+[1m[2026-09-08|11:15:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:35182 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:34|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=178
+[1m[2026-09-08|11:15:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=177
+[1m[2026-09-08|11:15:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=299
+[1m[2026-09-08|11:15:36|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:35196 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:36|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=180
+[1m[2026-09-08|11:15:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=179
+[1m[2026-09-08|11:15:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=300
+[1m[2026-09-08|11:15:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:35208 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:37|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=182
+[1m[2026-09-08|11:15:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=181
+[1m[2026-09-08|11:15:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=301
+[1m[2026-09-08|11:15:39|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=168
+INFO:     127.0.0.1:35214 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:39|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=184
+[1m[2026-09-08|11:15:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=183
+[1m[2026-09-08|11:15:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=302
+[1m[2026-09-08|11:15:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:35226 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:40|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=305
+[1m[2026-09-08|11:15:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=304
+[1m[2026-09-08|11:15:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=186
+[1m[2026-09-08|11:15:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=303
+[1m[2026-09-08|11:15:42|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:35240 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:42|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=308
+[1m[2026-09-08|11:15:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=307
+[1m[2026-09-08|11:15:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=188
+[1m[2026-09-08|11:15:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=306
+[1m[2026-09-08|11:15:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:35244 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:43|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:43|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 281, 'num_compressed_entries': 148, 'num_compressed_hits': 113, 'num_restore_attempts': 113, 'num_restore_success': 113, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 1938, 'num_restore_pages_released': 1938, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 281, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682032128, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:15:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=191
+[1m[2026-09-08|11:15:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=190
+[1m[2026-09-08|11:15:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=309
+[1m[2026-09-08|11:15:45|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:44822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:45|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=312
+[1m[2026-09-08|11:15:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=311
+[1m[2026-09-08|11:15:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=192
+[1m[2026-09-08|11:15:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=310
+[1m[2026-09-08|11:15:47|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:44832 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:47|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=315
+[1m[2026-09-08|11:15:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=314
+[1m[2026-09-08|11:15:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=194
+[1m[2026-09-08|11:15:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=313
+[1m[2026-09-08|11:15:48|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:44846 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:48|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=318
+[1m[2026-09-08|11:15:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=317
+[1m[2026-09-08|11:15:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=196
+[1m[2026-09-08|11:15:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=316
+[1m[2026-09-08|11:15:50|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:44860 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:50|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=321
+[1m[2026-09-08|11:15:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=320
+[1m[2026-09-08|11:15:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=198
+[1m[2026-09-08|11:15:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=319
+[1m[2026-09-08|11:15:51|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=185
+INFO:     127.0.0.1:44870 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:51|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=324
+[1m[2026-09-08|11:15:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=323
+[1m[2026-09-08|11:15:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=201
+[1m[2026-09-08|11:15:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=322
+[1m[2026-09-08|11:15:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:15:53|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:44878 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:53|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=327
+[1m[2026-09-08|11:15:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=326
+[1m[2026-09-08|11:15:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=204
+[1m[2026-09-08|11:15:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=325
+[1m[2026-09-08|11:15:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:15:54|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34314 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:54|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:54|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 317, 'num_compressed_entries': 148, 'num_compressed_hits': 120, 'num_restore_attempts': 120, 'num_restore_success': 120, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 2078, 'num_restore_pages_released': 2078, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 317, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682033664, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:15:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=330
+[1m[2026-09-08|11:15:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=329
+[1m[2026-09-08|11:15:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=206
+[1m[2026-09-08|11:15:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=328
+[1m[2026-09-08|11:15:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:15:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34316 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:56|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=209
+[1m[2026-09-08|11:15:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=208
+[1m[2026-09-08|11:15:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=331
+[1m[2026-09-08|11:15:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:15:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34324 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:58|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:15:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=334
+[1m[2026-09-08|11:15:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=333
+[1m[2026-09-08|11:15:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=210
+[1m[2026-09-08|11:15:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=332
+[1m[2026-09-08|11:15:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:15:59|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34330 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:15:59|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=213
+[1m[2026-09-08|11:16:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=212
+[1m[2026-09-08|11:16:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=335
+[1m[2026-09-08|11:16:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:16:01|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34336 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:01|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=215
+[1m[2026-09-08|11:16:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=214
+[1m[2026-09-08|11:16:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=336
+[1m[2026-09-08|11:16:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:16:02|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34352 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:02|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=339
+[1m[2026-09-08|11:16:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=338
+[1m[2026-09-08|11:16:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=216
+[1m[2026-09-08|11:16:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=337
+[1m[2026-09-08|11:16:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=203
+[1m[2026-09-08|11:16:04|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:34356 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:04|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=342
+[1m[2026-09-08|11:16:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=341
+[1m[2026-09-08|11:16:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=218
+[1m[2026-09-08|11:16:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=340
+[1m[2026-09-08|11:16:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:41950 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:05|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:05|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 355, 'num_compressed_entries': 148, 'num_compressed_hits': 127, 'num_restore_attempts': 127, 'num_restore_success': 127, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 2218, 'num_restore_pages_released': 2218, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 355, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682038272, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:16:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=345
+[1m[2026-09-08|11:16:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=344
+[1m[2026-09-08|11:16:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=221
+[1m[2026-09-08|11:16:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=343
+[1m[2026-09-08|11:16:07|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:41966 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:07|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=224
+[1m[2026-09-08|11:16:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=223
+[1m[2026-09-08|11:16:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=346
+[1m[2026-09-08|11:16:08|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:41972 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:08|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=226
+[1m[2026-09-08|11:16:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=225
+[1m[2026-09-08|11:16:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=347
+[1m[2026-09-08|11:16:10|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:41978 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:10|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=350
+[1m[2026-09-08|11:16:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=349
+[1m[2026-09-08|11:16:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=227
+[1m[2026-09-08|11:16:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=348
+[1m[2026-09-08|11:16:12|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:41984 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:12|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=353
+[1m[2026-09-08|11:16:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=352
+[1m[2026-09-08|11:16:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=229
+[1m[2026-09-08|11:16:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=351
+[1m[2026-09-08|11:16:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:41996 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:13|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=356
+[1m[2026-09-08|11:16:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=355
+[1m[2026-09-08|11:16:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=231
+[1m[2026-09-08|11:16:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=354
+[1m[2026-09-08|11:16:15|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:60224 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:15|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=359
+[1m[2026-09-08|11:16:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=358
+[1m[2026-09-08|11:16:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=233
+[1m[2026-09-08|11:16:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=357
+[1m[2026-09-08|11:16:16|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=220
+INFO:     127.0.0.1:60232 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:16|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:16|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 388, 'num_compressed_entries': 148, 'num_compressed_hits': 134, 'num_restore_attempts': 134, 'num_restore_success': 134, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 2358, 'num_restore_pages_released': 2358, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 388, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682038784, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:16:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=362
+[1m[2026-09-08|11:16:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=361
+[1m[2026-09-08|11:16:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=235
+[1m[2026-09-08|11:16:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=360
+[1m[2026-09-08|11:16:18|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60238 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:18|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=239
+[1m[2026-09-08|11:16:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=238
+[1m[2026-09-08|11:16:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=363
+[1m[2026-09-08|11:16:19|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60248 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:19|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=366
+[1m[2026-09-08|11:16:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=365
+[1m[2026-09-08|11:16:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=240
+[1m[2026-09-08|11:16:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=364
+[1m[2026-09-08|11:16:21|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60252 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:21|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=369
+[1m[2026-09-08|11:16:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=368
+[1m[2026-09-08|11:16:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=242
+[1m[2026-09-08|11:16:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=367
+[1m[2026-09-08|11:16:23|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:60266 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:23|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:24|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=245
+[1m[2026-09-08|11:16:24|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=244
+[1m[2026-09-08|11:16:24|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=370
+[1m[2026-09-08|11:16:24|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:39308 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:24|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=373
+[1m[2026-09-08|11:16:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=372
+[1m[2026-09-08|11:16:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=246
+[1m[2026-09-08|11:16:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=371
+[1m[2026-09-08|11:16:26|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:39322 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:26|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=376
+[1m[2026-09-08|11:16:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=375
+[1m[2026-09-08|11:16:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=248
+[1m[2026-09-08|11:16:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=374
+[1m[2026-09-08|11:16:27|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:39332 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:27|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:27|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 421, 'num_compressed_entries': 148, 'num_compressed_hits': 141, 'num_restore_attempts': 141, 'num_restore_success': 141, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 2498, 'num_restore_pages_released': 2498, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 421, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682034176, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:16:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=251
+[1m[2026-09-08|11:16:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=250
+[1m[2026-09-08|11:16:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=377
+[1m[2026-09-08|11:16:29|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=237
+INFO:     127.0.0.1:39336 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:29|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=380
+[1m[2026-09-08|11:16:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=379
+[1m[2026-09-08|11:16:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=252
+[1m[2026-09-08|11:16:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=378
+[1m[2026-09-08|11:16:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:30|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:39344 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:30|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=383
+[1m[2026-09-08|11:16:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=382
+[1m[2026-09-08|11:16:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=254
+[1m[2026-09-08|11:16:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=381
+[1m[2026-09-08|11:16:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:32|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:39352 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:32|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=386
+[1m[2026-09-08|11:16:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=385
+[1m[2026-09-08|11:16:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=256
+[1m[2026-09-08|11:16:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=384
+[1m[2026-09-08|11:16:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:34|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:39360 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:34|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=259
+[1m[2026-09-08|11:16:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=258
+[1m[2026-09-08|11:16:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=387
+[1m[2026-09-08|11:16:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:35|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:45946 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:35|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=390
+[1m[2026-09-08|11:16:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=389
+[1m[2026-09-08|11:16:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=260
+[1m[2026-09-08|11:16:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=388
+[1m[2026-09-08|11:16:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:45948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:37|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:38|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=263
+[1m[2026-09-08|11:16:38|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=123
+[1m[2026-09-08|11:16:38|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=262
+[1m[2026-09-08|11:16:38|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:38|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:45964 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:38|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:38|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 459, 'num_compressed_entries': 148, 'num_compressed_hits': 148, 'num_restore_attempts': 148, 'num_restore_success': 148, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 2638, 'num_restore_pages_released': 2638, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 459, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682040320, 'gpu_memory_reserved_bytes': 45847937024, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45847937024, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:16:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=264
+[1m[2026-09-08|11:16:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:40|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+INFO:     127.0.0.1:45976 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:40|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:41|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=265
+[1m[2026-09-08|11:16:41|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=125
+[1m[2026-09-08|11:16:41|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=200
+[1m[2026-09-08|11:16:41|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:45980 - "GET /v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45994 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46010 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46000 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46018 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46026 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46036 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46050 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46064 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=403
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=391
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=404
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=393
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=392
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=405
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=395
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=394
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=406
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=396
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=407
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=399
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=408
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=400
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=409
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=401
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=398
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=410
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=402
+[1m[2026-09-08|11:16:49|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=397
+[1m[2026-09-08|11:16:49|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:16:49|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 485, 'num_compressed_entries': 148, 'num_compressed_hits': 158, 'num_restore_attempts': 158, 'num_restore_success': 158, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 2838, 'num_restore_pages_released': 2838, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 485, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682239488, 'gpu_memory_reserved_bytes': 45912948736, 'gpu_max_memory_allocated_bytes': 45085051392, 'gpu_max_memory_reserved_bytes': 45912948736, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+INFO:     127.0.0.1:34992 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34996 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35004 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35010 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35016 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35012 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35022 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35028 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=420
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=412
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=411
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=421
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=413
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=422
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=414
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=423
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=415
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=424
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=416
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=425
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=417
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=426
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=418
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=427
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=419
+[1m[2026-09-08|11:16:57|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=397
+[1m[2026-09-08|11:16:57|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:59488 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59460 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59468 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59472 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59504 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59506 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59520 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59528 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=437
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=428
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=438
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=429
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=439
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=430
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=440
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=431
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=441
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=432
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=442
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=433
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=443
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=434
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=444
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=436
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=435
+[1m[2026-09-08|11:17:05|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=397
+[1m[2026-09-08|11:17:05|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:17:05|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 521, 'num_compressed_entries': 148, 'num_compressed_hits': 174, 'num_restore_attempts': 174, 'num_restore_success': 174, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 3158, 'num_restore_pages_released': 3158, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 521, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682257408, 'gpu_memory_reserved_bytes': 45915045888, 'gpu_max_memory_allocated_bytes': 45085170688, 'gpu_max_memory_reserved_bytes': 45915045888, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+INFO:     127.0.0.1:33116 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33102 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33132 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33152 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33136 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33162 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33176 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33180 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=454
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=445
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=455
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=447
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=456
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=448
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=457
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=449
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=458
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=450
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=459
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=451
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=446
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=460
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=452
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=461
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=453
+[1m[2026-09-08|11:17:13|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=397
+[1m[2026-09-08|11:17:13|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:33186 - "GET /v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33196 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=463
+[1m[2026-09-08|11:17:20|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=462
+[1m[2026-09-08|11:17:20|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:17:20|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 541, 'num_compressed_entries': 148, 'num_compressed_hits': 182, 'num_restore_attempts': 182, 'num_restore_success': 182, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 3318, 'num_restore_pages_released': 3318, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 541, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682006016, 'gpu_memory_reserved_bytes': 45917143040, 'gpu_max_memory_allocated_bytes': 45085170688, 'gpu_max_memory_reserved_bytes': 45917143040, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+INFO:     127.0.0.1:54300 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=466
+[1m[2026-09-08|11:17:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=465
+[1m[2026-09-08|11:17:22|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=464
+INFO:     127.0.0.1:54314 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:22|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:17:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=468
+[1m[2026-09-08|11:17:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=467
+[1m[2026-09-08|11:17:37|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=464
+INFO:     127.0.0.1:50826 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:37|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:17:37|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 547, 'num_compressed_entries': 148, 'num_compressed_hits': 182, 'num_restore_attempts': 182, 'num_restore_success': 182, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 3318, 'num_restore_pages_released': 3318, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 547, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682010112, 'gpu_memory_reserved_bytes': 45917143040, 'gpu_max_memory_allocated_bytes': 45085170688, 'gpu_max_memory_reserved_bytes': 45917143040, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+[1m[2026-09-08|11:17:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=470
+[1m[2026-09-08|11:17:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=469
+[1m[2026-09-08|11:17:43|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=464
+INFO:     127.0.0.1:50836 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:43|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:17:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=472
+[1m[2026-09-08|11:17:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=471
+[1m[2026-09-08|11:17:56|core|rank=0][0m [31mERROR   [0m [ZipCacheV3] demote failed: node=464
+INFO:     127.0.0.1:47526 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:17:56|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-08|11:17:56|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] stats: {'num_demotions': 148, 'num_demote_failures': 553, 'num_compressed_entries': 148, 'num_compressed_hits': 182, 'num_restore_attempts': 182, 'num_restore_success': 182, 'num_restore_fallback': 0, 'num_compressed_freed': 0, 'num_temporary_restore_pages': 3318, 'num_restore_pages_released': 3318, 'num_restore_rejected_small_prefix': 0, 'original_estimated_bytes': 42767400960, 'compressed_estimated_bytes_4bit': 9389868480, 'compressed_storage_bytes': 9389868480, 'active_original_estimated_bytes': 42767400960, 'active_compressed_estimated_bytes_4bit': 9389868480, 'active_compressed_storage_bytes': 9389868480, 'last_estimated_compression_ratio': 4.515603799185889, 'last_storage_compression_ratio': 4.515603799185889, 'num_demote_rejected_pool_full': 553, 'active_estimated_compression_ratio': 4.55463258629156, 'active_storage_compression_ratio': 4.55463258629156, 'gpu_memory_allocated_bytes': 44682010112, 'gpu_memory_reserved_bytes': 45917143040, 'gpu_max_memory_allocated_bytes': 45085170688, 'gpu_max_memory_reserved_bytes': 45917143040, 'compressed_pool_capacity_bytes': 14260633600, 'compressed_pool_used_bytes': 9389868480, 'compressed_pool_free_bytes': 4870765120, 'compressed_pool_utilization': 0.6584467943976907, 'compressed_pool_q_used_bytes': 8554567680, 'compressed_pool_q4_used_bytes': 6417285120, 'compressed_pool_q2_used_bytes': 2137282560, 'compressed_pool_scale_used_bytes': 668240640, 'compressed_pool_ids_used_bytes': 167060160, 'compressed_pool_q4_capacity_bytes': 6417285120, 'compressed_pool_q2_capacity_bytes': 2139095040, 'compressed_pool_scale_capacity_bytes': 3565158400, 'compressed_pool_ids_capacity_bytes': 2139095040, 'normal_pool_capacity_bytes': 13861011456, 'estimated_effective_kv_capacity_bytes': 78812957951.72432, 'estimated_capacity_gain_vs_normal_pool': 5.685945661462435}
+Process minisgl-TP0-scheduler:
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/server/launch.py", line 53, in _run_scheduler
+    scheduler.run_forever()
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/scheduler.py", line 189, in run_forever
+    data = self.overlap_loop(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/scheduler.py", line 147, in overlap_loop
+    forward_input = self._schedule_next_batch()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/scheduler.py", line 333, in _schedule_next_batch
+    return self._prepare_batch(batch) if batch else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/scheduler.py", line 301, in _prepare_batch
+    self.cache_manager.allocate_paged(batch.reqs)
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/cache.py", line 167, in allocate_paged
+    allocated = self._page_to_token(self._allocate(needed_pages))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/cache.py", line 291, in _allocate
+    evicted = self.prefix_cache.evict((needed_pages - free_pages) * self.page_size)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/kvcache/radix_cache.py", line 302, in evict
+    leave_nodes
+AssertionError: Cannot evict enough cache, need 1, only 0 evicted
+INFO:     127.0.0.1:54062 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:38:18|FrontendAPI][0m [33mWARNING [0m Aborting request for user 229
+INFO:     127.0.0.1:53344 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|11:58:18|FrontendAPI][0m [33mWARNING [0m Aborting request for user 230
+INFO:     127.0.0.1:41244 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-08|12:18:18|FrontendAPI][0m [33mWARNING [0m Aborting request for user 231
