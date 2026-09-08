@@ -1,0 +1,28 @@
+{
+  "mode": "main_8b_25gb",
+  "preset": "full",
+  "max_samples_override": 32,
+  "base_url": "http://127.0.0.1:30000",
+  "started_at": "2026-09-07 22:43:53",
+  "run_dir": "experiment/logs/20260907_224353_main_8b_25gb",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30000/v1",
+    "latency_s": 0.010734230279922485,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "longbench_long_context_pressure",
+      "dataset": "workloads/longbench_long_context_pressure.jsonl",
+      "concurrency": 8,
+      "repeat": 1,
+      "max_tokens": 256,
+      "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
+      "sample_limit": 32
+    }
+  ],
+  "git_branch": "main",
+  "git_commit": "2d4f201",
+  "git_describe": "2d4f201"
+}

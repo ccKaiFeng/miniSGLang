@@ -1,0 +1,98 @@
+{
+  "mode": "main_8b_25gb",
+  "base_url": "http://127.0.0.1:30000",
+  "run_dir": "experiment/logs/20260907_215400_main_8b_25gb",
+  "manifest": {
+    "mode": "main_8b_25gb",
+    "preset": "full",
+    "max_samples_override": 64,
+    "base_url": "http://127.0.0.1:30000",
+    "started_at": "2026-09-07 21:54:00",
+    "run_dir": "experiment/logs/20260907_215400_main_8b_25gb",
+    "server_check": {
+      "ok": true,
+      "url": "http://127.0.0.1:30000/v1",
+      "latency_s": 0.0107945017516613,
+      "response": "{\"status\":\"ok\"}"
+    },
+    "experiments": [
+      {
+        "name": "public_shared_prefix_serial",
+        "dataset": "workloads/public_shared_prefix.jsonl",
+        "concurrency": 1,
+        "repeat": 3,
+        "max_tokens": 128,
+        "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+        "sample_limit": 64
+      }
+    ],
+    "git_branch": "main",
+    "git_commit": "2d4f201",
+    "git_describe": "2d4f201"
+  },
+  "experiments": [
+    {
+      "name": "public_shared_prefix_serial",
+      "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+      "result_file": "experiment/logs/20260907_215400_main_8b_25gb/public_shared_prefix_serial.jsonl",
+      "summary_file": "experiment/logs/20260907_215400_main_8b_25gb/public_shared_prefix_serial_summary.json",
+      "log_file": "experiment/logs/20260907_215400_main_8b_25gb/public_shared_prefix_serial.log",
+      "summary": {
+        "num_requests": 192,
+        "num_ok": 192,
+        "num_failed": 0,
+        "total_wall_time_s": 287.3072030544281,
+        "request_throughput_rps": 0.6682742303666751,
+        "output_chunk_throughput_cps": 84.87082725656775,
+        "output_chunks": 24384,
+        "ttft_avg_s": 0.06562067727403094,
+        "ttft_p50_s": 0.05681037902832031,
+        "ttft_p90_s": 0.06604507565498352,
+        "ttft_p99_s": 0.35359587892889977,
+        "e2e_avg_s": 1.4962830045066464,
+        "e2e_p50_s": 1.4830089919269085,
+        "e2e_p90_s": 1.5124611146748066,
+        "e2e_p99_s": 1.7857420146465302,
+        "tpot_avg_s": 0.011354462914544566,
+        "tpot_p50_s": 0.011355338411198722,
+        "tpot_p90_s": 0.011480468694889357,
+        "tpot_p99_s": 0.011486905346077585,
+        "finish_reasons": {
+          "stop": 192
+        },
+        "num_reached_max_tokens": 0,
+        "gpu_samples": 520,
+        "gpu_memory_used_mb_min": 42841,
+        "gpu_memory_used_mb_max": 43247,
+        "gpu_memory_used_mb_avg": 43245.526923076926
+      },
+      "compact_summary": {
+        "num_requests": 192,
+        "num_ok": 192,
+        "num_failed": 0,
+        "request_throughput_rps": 0.6682742303666751,
+        "output_chunk_throughput_cps": 84.87082725656775,
+        "ttft_avg_s": 0.06562067727403094,
+        "ttft_p50_s": 0.05681037902832031,
+        "ttft_p90_s": 0.06604507565498352,
+        "e2e_avg_s": 1.4962830045066464,
+        "e2e_p50_s": 1.4830089919269085,
+        "e2e_p90_s": 1.5124611146748066,
+        "tpot_avg_s": 0.011354462914544566,
+        "tpot_p50_s": 0.011355338411198722,
+        "tpot_p90_s": 0.011480468694889357,
+        "gpu_memory_used_mb_min": 42841,
+        "gpu_memory_used_mb_max": 43247,
+        "gpu_memory_used_mb_avg": 43245.526923076926,
+        "finish_reasons": {
+          "stop": 192
+        },
+        "num_reached_max_tokens": 0
+      }
+    }
+  ],
+  "zipcache_stats": {
+    "num_stats": 0,
+    "message": "No [ZipCacheV1]/[ZipCacheV2]/[ZipCacheV3]/[ZipCacheV4] stats found."
+  }
+}

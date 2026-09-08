@@ -1,0 +1,30 @@
+{
+  "mode": "main_8b_25gb",
+  "preset": "full",
+  "max_samples_override": 64,
+  "base_url": "http://127.0.0.1:30000",
+  "started_at": "2026-09-07 21:59:19",
+  "run_dir": "experiment/logs/20260907_215919_main_8b_25gb",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30000/v1",
+    "latency_s": 0.011062517762184143,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "gsm8k_public_correctness",
+      "dataset": "workloads/gsm8k_public_correctness.jsonl",
+      "concurrency": 1,
+      "repeat": 1,
+      "max_tokens": 2048,
+      "ignore_eos": false,
+      "description": "GSM8K 公开测试集数学推理正确性测试，使用标准数字答案自动计算 accuracy。",
+      "evaluate": "auto",
+      "sample_limit": 64
+    }
+  ],
+  "git_branch": "main",
+  "git_commit": "2d4f201",
+  "git_describe": "2d4f201"
+}

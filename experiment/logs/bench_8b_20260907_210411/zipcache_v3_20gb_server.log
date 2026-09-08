@@ -1,0 +1,38 @@
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-07|21:20:15][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B', tp_info=DistributedInfo(rank=0, size=1), dtype=torch.bfloat16, max_running_req=8, attention_backend='auto', moe_backend='auto', cuda_graph_bs=None, cuda_graph_max_bs=0, page_size=1, memory_ratio=0.9, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=None, num_page_override=None, enable_zipcache_v3=True, enable_zipcache_cuda_graph=False, zipcache_unimportant_ratio=0.4, zipcache_k_important_bit=4, zipcache_k_unimportant_bit=2, zipcache_v_important_bit=4, zipcache_v_unimportant_bit=2, zipcache_protect_recent_tokens=1, zipcache_stats_interval=10.0, zipcache_v3_demote_on_finish=True, zipcache_v3_normal_pool_pages=35000, zipcache_v3_compressed_pool_mb=20480, zipcache_v3_compressed_pool_ratio=1.0, zipcache_v3_q4_pool_ratio=0.45, zipcache_v3_q2_pool_ratio=0.15, zipcache_v3_scale_pool_ratio=0.25, zipcache_v3_ids_pool_ratio=0.15, zipcache_v3_keep_compressed_after_restore=True, zipcache_v3_min_restore_tokens=0, max_extend_tokens=4096, cache_type='radix', offline_mode=False, _unique_suffix='.pid=25576', server_host='0.0.0.0', server_port=30001, num_tokenizer=0, silent_output=False)
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-07|21:20:18|core|rank=0][0m [32mINFO    [0m Auto-selected attention backend: fi
+[1m[2026-09-07|21:20:18|core|rank=0][0m [33mWARNING [0m CUDA Graph is disabled for ZipCache
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[1m[2026-09-07|21:20:18|core|rank=0][0m [32mINFO    [0m Free memory before loading model: 36.58 GiB
+[1m[2026-09-07|21:20:18|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+Loading weights:   0%|          | 0/5 [00:00<?, ?it/s]Loading weights:  20%|██        | 1/5 [00:00<00:03,  1.10it/s]Loading weights:  40%|████      | 2/5 [00:01<00:02,  1.28it/s]Loading weights:  60%|██████    | 3/5 [00:02<00:01,  1.25it/s]Loading weights:  80%|████████  | 4/5 [00:03<00:00,  1.24it/s]Loading weights: 100%|██████████| 5/5 [00:04<00:00,  1.25it/s]Loading weights: 100%|██████████| 5/5 [00:04<00:00,  1.24it/s]
+[1m[2026-09-07|21:20:23|core|rank=0][0m [32mINFO    [0m [ZipCacheV3] override normal KV pool pages: num_pages=35000
+[1m[2026-09-07|21:20:23|core|rank=0][0m [32mINFO    [0m Allocating 35000 tokens for KV cache, K + V = 4.81 GiB
+Process minisgl-TP0-scheduler:
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/server/launch.py", line 38, in _run_scheduler
+    scheduler = Scheduler(args)
+                ^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/scheduler/scheduler.py", line 81, in __init__
+    self.engine = Engine(config)
+                  ^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/engine/engine.py", line 124, in __init__
+    self.zipcache_manager = ZipCacheV3Manager(
+                            ^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/zipcache/manager.py", line 490, in __init__
+    self.pool = _V3CompressedPool(
+                ^^^^^^^^^^^^^^^^^^
+  File "/root/autodl-tmp/miniSGLang/python/minisgl/zipcache/manager.py", line 308, in __init__
+    self.scale_buffer = torch.empty(scale_bytes // 2, dtype=torch.float16, device=device)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 5.00 GiB. GPU 0 has a total capacity of 79.25 GiB of which 3.83 GiB is free. Process 20865 has 42.22 GiB memory in use. Including non-PyTorch memory, this process has 33.17 GiB memory in use. Of the allocated memory 32.09 GiB is allocated by PyTorch, and 601.39 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

@@ -1,0 +1,28 @@
+{
+  "mode": "main_8b_25gb",
+  "preset": "full",
+  "max_samples_override": 64,
+  "base_url": "http://127.0.0.1:30000",
+  "started_at": "2026-09-07 21:54:00",
+  "run_dir": "experiment/logs/20260907_215400_main_8b_25gb",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30000/v1",
+    "latency_s": 0.0107945017516613,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "public_shared_prefix_serial",
+      "dataset": "workloads/public_shared_prefix.jsonl",
+      "concurrency": 1,
+      "repeat": 3,
+      "max_tokens": 128,
+      "description": "顺序重复共享前缀测试，用于提高 finished prefix demote 后再次命中 compressed entry 的概率。",
+      "sample_limit": 64
+    }
+  ],
+  "git_branch": "main",
+  "git_commit": "2d4f201",
+  "git_describe": "2d4f201"
+}
