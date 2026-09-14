@@ -62,6 +62,8 @@ class CacheManager:
         self.page_table = page_table
         self.page_size = page_size
         self.zipcache_manager = zipcache_manager
+        if zipcache_manager is not None and hasattr(self.prefix_cache, "free_compressed_entry"):
+            self.prefix_cache.free_compressed_entry = zipcache_manager._free_entry
 
     def match_req(self, req: PendingReq) -> MatchResult:
         """查询请求 prompt 是否有可复用前缀缓存。
@@ -217,16 +219,21 @@ class CacheManager:
                 # 子节点：父节点会被计入 evictable_size，但由于它不再是叶子，原
                 # radix evict() 无法真正释放它，normal pool 紧张时会触发断言。
                 #
-                # 因此 v3 在请求结束时尝试把整条已解锁路径上的 normal 节点都
-                # demote 到 compressed pool。
+                # 尝试压缩整条已解锁路径。池满时允许部分成功：radix evict()
+                # 已支持删除 compressed 叶子并继续释放 normal 父节点。
                 if hasattr(self.prefix_cache, "path_nodes"):
                     nodes_to_demote = list(reversed(self.prefix_cache.path_nodes(new_handle)))
                 else:
                     nodes_to_demote = [new_handle.node]
 
                 demoted_parts: List[torch.Tensor] = []
+                # 回收旧 compressed entry 时保留本轮路径，避免 nodes_to_demote
+                # 中保存的节点被删除后，继续向已脱离 radix tree 的节点写入 entry。
+                excluded = {node.uuid for node in nodes_to_demote}
                 for node in nodes_to_demote:
-                    demoted = self.zipcache_manager.demote_node(node)
+                    demoted = self.zipcache_manager.demote_node(
+                        node, prefix_cache=self.prefix_cache, excluded=excluded
+                    )
                     if demoted is not None:
                         self.prefix_cache.mark_node_compressed(
                             node,

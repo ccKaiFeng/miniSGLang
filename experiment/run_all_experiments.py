@@ -335,6 +335,7 @@ def main() -> None:
     parser.add_argument("--gpu-sample-interval", type=float, default=0.5)
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--server-log", type=Path, default=None, help="Optional ZipCache server log.")
+    parser.add_argument("--server-metadata", type=Path, help="Actual server source and launch command.")
     parser.add_argument("--skip-server-check", action="store_true")
     parser.add_argument(
         "--preset",
@@ -393,6 +394,11 @@ def main() -> None:
         "experiments": experiments,
     }
     manifest.update(get_git_info(repo_root))
+    if args.server_metadata is not None:
+        metadata = load_json(args.server_metadata)
+        manifest["server"] = metadata
+        manifest.update({key: metadata[key] for key in ("git_commit", "git_branch")})
+        manifest["git_describe"] = metadata["git_commit"]
     write_json(run_dir / "manifest.json", manifest)
 
     all_results: List[Dict[str, Any]] = []
@@ -440,6 +446,8 @@ def main() -> None:
         if exit_code != 0:
             raise SystemExit(f"Experiment {name} failed, see {log_file}")
         summary = load_json(summary_file)
+        if summary.get("num_failed", 0) or not summary.get("num_ok", 0):
+            raise SystemExit(f"Experiment {name} contains failed or no requests; see {summary_file}")
         row_result = {
             "name": name,
             "description": exp["description"],
@@ -463,6 +471,8 @@ def main() -> None:
             ]
             print(f"\n===== Evaluating {name} correctness =====")
             eval_exit = run_command(eval_cmd, run_dir / f"{name}_eval.log")
+            if eval_exit != 0 or not eval_file.exists():
+                raise SystemExit(f"Evaluation failed for {name}")
             if eval_exit == 0 and eval_file.exists():
                 row_result["eval_file"] = str(eval_file)
                 row_result["eval_summary"] = load_json(eval_file)

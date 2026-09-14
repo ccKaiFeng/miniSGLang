@@ -292,7 +292,9 @@ def main() -> None:
     sampler.start()
     results: List[Dict[str, Any]] = []
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+        with args.output.open("w", encoding="utf-8") as output, concurrent.futures.ThreadPoolExecutor(
+            max_workers=args.concurrency
+        ) as pool:
             futures = [
                 pool.submit(run_one, args.base_url, args.model, item, args.timeout)
                 for item in items
@@ -300,14 +302,14 @@ def main() -> None:
             for i, fut in enumerate(concurrent.futures.as_completed(futures), start=1):
                 result = fut.result()
                 results.append(result)
+                # Preserve completed requests even if a later scheduler crash
+                # causes the benchmark watchdog to terminate this process.
+                output.write(json.dumps(result, ensure_ascii=False) + "\n")
+                output.flush()
                 status = "ok" if result.get("ok") else "failed"
                 print(f"[{i}/{len(futures)}] {result.get('id')} {status}")
     finally:
         sampler.stop()
-
-    with args.output.open("w", encoding="utf-8") as f:
-        for row in results:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     summary = summarize(results, sampler.summary())
     with args.summary.open("w", encoding="utf-8") as f:

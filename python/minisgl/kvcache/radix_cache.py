@@ -220,6 +220,8 @@ class RadixPrefixCache(BasePrefixCache):
         self.empty_tensor = torch.empty(0, dtype=torch.int32, device=device)
         self.evictable_size = 0
         self.protected_size = 0
+        # 删除 compressed 节点时归还 manager 中的四类 buffer slice。
+        self.free_compressed_entry: Callable[[int], None] | None = None
         self.root_node = RadixTreeNode(self.key_fn)
         self.root_node.ref_count = 1  # root is always protected
 
@@ -270,6 +272,11 @@ class RadixPrefixCache(BasePrefixCache):
         input_ids, indices = input_ids[:insert_len], indices[:insert_len]
         node, prefix_len = self._tree_walk(input_ids)
         if prefix_len != insert_len:  # NOTE: prefix_len < insert_len
+            existing = node.children.get(self.key_fn(input_ids[prefix_len:]))
+            if existing is not None and existing.is_compressed:
+                # 部分命中 compressed 节点无法 split；不能覆盖同 key 的旧子树，
+                # 否则其 normal pages 和 compressed entries 会失去所有者。
+                return InsertResult(prefix_len, RadixCacheHandle(prefix_len, node))
             new_node = RadixTreeNode(self.key_fn)
             new_node.set_key_value(input_ids[prefix_len:], indices[prefix_len:].clone())
             new_node.set_parent(node)
@@ -283,6 +290,7 @@ class RadixPrefixCache(BasePrefixCache):
         驱逐策略：
         - 只能驱逐 ref_count == 0 的叶子节点；
         - 使用 timestamp 小的节点优先，近似 LRU；
+        - compressed 叶子只释放 compressed entry，不返回其失效的 normal indices；
         - 驱逐一个叶子后，如果父节点也变成可驱逐叶子，就继续加入候选堆。
         """
 
@@ -303,17 +311,40 @@ class RadixPrefixCache(BasePrefixCache):
             ), f"Cannot evict enough cache, need {size}, only {evicted_size} evicted"
             node = heapq.heappop(leave_nodes)
             assert node.ref_count == 0 and node.is_leaf() and not node.is_root()
-            assert not node.is_compressed
-            evicted_size += node.length
-            evicted_indices.append(node.value)
-            self.evictable_size -= node.length
-            parent = node.parent
-            del parent.children[self.key_fn(node._key)]
+            if node.is_compressed:
+                self._remove_compressed_leaf(node)
+                parent = node.parent
+            else:
+                evicted_size += node.length
+                evicted_indices.append(node.value)
+                self.evictable_size -= node.length
+                parent = node.parent
+                del parent.children[self.key_fn(node._key)]
             # NOTE: root is always protected, so won't be evicted
-            if parent.is_leaf() and parent.ref_count == 0 and not parent.is_compressed:
+            if parent.is_leaf() and parent.ref_count == 0 and (
+                not parent.is_compressed or self.free_compressed_entry is not None
+            ):
                 heapq.heappush(leave_nodes, parent)
 
         return torch.cat(evicted_indices)
+
+    def _remove_compressed_leaf(self, node: RadixTreeNode) -> None:
+        """删除一个无引用 compressed 叶子；旧 node.value 已失效，不能归还 normal pool。"""
+        assert node.is_leaf() and node.ref_count == 0 and node.is_compressed
+        assert self.free_compressed_entry is not None and node.compressed_id is not None
+        self.free_compressed_entry(node.compressed_id)
+        del node.parent.children[self.key_fn(node._key)]
+
+    def evict_compressed_leaf(self, excluded: set[int]) -> bool:
+        """按 radix 访问时间回收一个 compressed 叶子。excluded 为待 demote 路径的 uuid。"""
+        candidates = [
+            node for node in self._collect_leave_nodes_for_evict()
+            if node.is_compressed and node.uuid not in excluded
+        ]
+        if not candidates:
+            return False
+        self._remove_compressed_leaf(min(candidates, key=lambda node: node.timestamp))
+        return True
 
     def reset(self) -> None:
         """当前 radix cache 暂未实现 reset。"""
@@ -343,7 +374,9 @@ class RadixPrefixCache(BasePrefixCache):
         while len(nodes) > 0:
             node = nodes.pop()
             if node.is_leaf():
-                if node.ref_count == 0 and not node.is_compressed:
+                if node.ref_count == 0 and (
+                    not node.is_compressed or self.free_compressed_entry is not None
+                ):
                     leave_nodes.append(node)
             else:
                 for child in node.children.values():

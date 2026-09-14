@@ -17,8 +17,11 @@ def load_json(path: Path) -> Dict[str, Any]:
 
 def find_experiment_dirs(log_root: Path, pattern: str) -> List[Path]:
     return sorted(
-        [d for d in log_root.iterdir() if d.is_dir() and pattern in d.name],
-        key=lambda d: d.name,
+        [
+            manifest.parent for manifest in log_root.rglob("manifest.json")
+            if pattern in str(manifest.parent.relative_to(log_root)) or pattern in log_root.name
+        ],
+        key=str,
     )
 
 
@@ -69,26 +72,31 @@ def main() -> None:
 
     experiments: Dict[str, List[Dict[str, Any]]] = {}
     for d in dirs:
+        manifest = load_json(d / "manifest.json")
         for summary_file in sorted(d.glob("*_summary.json")):
             exp_name = summary_file.stem.replace("_summary", "")
             summary = load_json(summary_file)
+            if "num_requests" not in summary:
+                continue
             metrics = extract_metrics(summary)
             metrics["_dir"] = str(d)
-            metrics["_mode"] = d.name.split("_", 2)[-1] if "_" in d.name else d.name
+            metrics["_mode"] = manifest.get("mode", d.name)
             experiments.setdefault(exp_name, []).append(metrics)
 
     for exp_name, runs in sorted(experiments.items()):
         lines.extend([
             f"## {exp_name}",
             "",
-            "| mode | rps | chunks/s | ttft avg | ttft p90 | ttft p99 | e2e avg | gpu max MB |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            "| mode | ok/total | rps | chunks/s | ttft avg | ttft p90 | ttft p99 | e2e avg | gpu max MB |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         ])
         for run in runs:
             mode = run.get("_mode", "unknown")
             lines.append(
-                "| {mode} | {rps} | {cps} | {ttft} | {ttft90} | {ttft99} | {e2e} | {gpu} |".format(
+                "| {mode} | {ok}/{total} | {rps} | {cps} | {ttft} | {ttft90} | {ttft99} | {e2e} | {gpu} |".format(
                     mode=mode,
+                    ok=run.get("num_ok", "n/a"),
+                    total=run.get("num_requests", "n/a"),
                     rps=fmt_val(run.get("request_throughput_rps")),
                     cps=fmt_val(run.get("output_chunk_throughput_cps")),
                     ttft=fmt_val(run.get("ttft_avg_s"), "s"),

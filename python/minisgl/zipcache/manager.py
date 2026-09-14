@@ -28,6 +28,10 @@ from minisgl.utils import init_logger
 logger = init_logger(__name__)
 
 
+class CompressedPoolFull(RuntimeError):
+    """某个固定 buffer 无法分配连续 slice；允许上层回收缓存后重试。"""
+
+
 @dataclass(frozen=True)
 class _PoolSlice:
     """compressed pool 内一段连续 buffer 的归属信息。
@@ -294,7 +298,7 @@ class _V3CompressedPool:
         ]
         ratio_sum = sum(ratios)
         if ratio_sum <= 0:
-            ratios = [0.45, 0.15, 0.25, 0.15]
+            ratios = [0.66, 0.22, 0.09, 0.03]
             ratio_sum = sum(ratios)
         ratios = [r / ratio_sum for r in ratios]
 
@@ -455,7 +459,7 @@ class _V3CompressedPool:
 
         offset = allocator.allocate(length)
         if offset is None:
-            raise RuntimeError(f"ZipCacheV3 compressed pool is full: buffer={buffer_name}")
+            raise CompressedPoolFull(f"ZipCacheV3 compressed pool is full: buffer={buffer_name}")
         allocated.append(_PoolSlice(buffer_name, offset, length))
         return offset
 
@@ -490,10 +494,10 @@ class ZipCacheV3Manager:
         self.pool = _V3CompressedPool(
             total_bytes=self._choose_compressed_pool_bytes(),
             device=kv_pool.device,
-            q4_ratio=self._pool_ratio("q4", 0.45),
-            q2_ratio=self._pool_ratio("q2", 0.15),
-            scale_ratio=self._pool_ratio("scale", 0.25),
-            ids_ratio=self._pool_ratio("ids", 0.15),
+            q4_ratio=self._pool_ratio("q4", 0.66),
+            q2_ratio=self._pool_ratio("q2", 0.22),
+            scale_ratio=self._pool_ratio("scale", 0.09),
+            ids_ratio=self._pool_ratio("ids", 0.03),
         )
         self.entries: Dict[int, _CompressedEntry] = {}
         self.entry_by_node_uuid: Dict[int, int] = {}
@@ -543,7 +547,25 @@ class ZipCacheV3Manager:
     def free_request(self, req_uid: int) -> None:
         """compressed prefix 不按请求 uid 释放，保留给未来 shared-prefix 命中。"""
 
-    def demote_node(self, node: Any) -> torch.Tensor | None:
+    def demote_node(
+        self, node: Any, *, prefix_cache: Any = None, excluded: set[int] | None = None
+    ) -> torch.Tensor | None:
+        """压缩节点，池满时逐个驱逐旧 compressed 叶子并重试。
+
+        excluded 保存当前路径的 uuid，避免重试时删除调用者仍持有的节点。
+        返回原 normal indices [node.length]，或在无法回收时返回 None。
+        每次失败均先回滚所有部分分配，不会把失败的 entry 留在 buffer 中。
+        """
+        excluded = set(excluded or ()) | {node.uuid}
+        while True:
+            try:
+                return self._demote_node(node)
+            except CompressedPoolFull:
+                if prefix_cache is None or not prefix_cache.evict_compressed_leaf(excluded):
+                    self._stats["num_demote_failures"] += 1
+                    return None
+
+    def _demote_node(self, node: Any) -> torch.Tensor | None:
         """把一个 radix node 的 normal KV page 压缩到 GPU compressed pool。
 
         成功时返回原 normal indices，调用者负责把这些 page 归还 normal pool。
@@ -656,9 +678,10 @@ class ZipCacheV3Manager:
             return indices
         except Exception as exc:
             self._free_layers(layers)
-            self._stats["num_demote_failures"] += 1
-            if "compressed pool is full" in str(exc):
+            if isinstance(exc, CompressedPoolFull):
                 self._stats["num_demote_rejected_pool_full"] += 1
+                raise
+            self._stats["num_demote_failures"] += 1
             logger.exception("[ZipCacheV3] demote failed: node=%s", getattr(node, "uuid", None))
             return None
 

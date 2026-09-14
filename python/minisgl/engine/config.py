@@ -74,10 +74,10 @@ class EngineConfig:
     zipcache_v3_normal_pool_pages: int = 0
     zipcache_v3_compressed_pool_mb: int = 0
     zipcache_v3_compressed_pool_ratio: float = 1.0
-    zipcache_v3_q4_pool_ratio: float = 0.45
-    zipcache_v3_q2_pool_ratio: float = 0.15
-    zipcache_v3_scale_pool_ratio: float = 0.25
-    zipcache_v3_ids_pool_ratio: float = 0.15
+    zipcache_v3_q4_pool_ratio: float = 0.66
+    zipcache_v3_q2_pool_ratio: float = 0.22
+    zipcache_v3_scale_pool_ratio: float = 0.09
+    zipcache_v3_ids_pool_ratio: float = 0.03
     zipcache_v3_keep_compressed_after_restore: bool = True
     zipcache_v3_min_restore_tokens: int = 0
 
