@@ -1,0 +1,30 @@
+{
+  "mode": "zipcache_v3_8b_20gb",
+  "preset": "full",
+  "max_samples_override": 64,
+  "base_url": "http://127.0.0.1:30001",
+  "started_at": "2026-09-14 13:39:20",
+  "run_dir": "experiment/logs/20260914_133920_zipcache_v3_8b_20gb",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30001/v1",
+    "latency_s": 0.010595805943012238,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "gsm8k_public_correctness",
+      "dataset": "workloads/gsm8k_public_correctness.jsonl",
+      "concurrency": 1,
+      "repeat": 1,
+      "max_tokens": 2048,
+      "ignore_eos": false,
+      "description": "GSM8K 公开测试集数学推理正确性测试，使用标准数字答案自动计算 accuracy。",
+      "evaluate": "auto",
+      "sample_limit": 64
+    }
+  ],
+  "git_branch": "zipcache-v3-quick-results",
+  "git_commit": "c643ae0",
+  "git_describe": "c643ae0"
+}

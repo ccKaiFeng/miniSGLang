@@ -1,0 +1,28 @@
+{
+  "mode": "zipcache_v3_8b_20gb",
+  "preset": "full",
+  "max_samples_override": 32,
+  "base_url": "http://127.0.0.1:30001",
+  "started_at": "2026-09-14 13:38:48",
+  "run_dir": "experiment/logs/20260914_133848_zipcache_v3_8b_20gb",
+  "server_check": {
+    "ok": true,
+    "url": "http://127.0.0.1:30001/v1",
+    "latency_s": 0.009790219366550446,
+    "response": "{\"status\":\"ok\"}"
+  },
+  "experiments": [
+    {
+      "name": "longbench_long_context_pressure",
+      "dataset": "workloads/longbench_long_context_pressure.jsonl",
+      "concurrency": 8,
+      "repeat": 1,
+      "max_tokens": 256,
+      "description": "LongBench 派生长上下文压力测试，优先选择较长样本，用于压高 KV cache 显存和 prefill 压力。",
+      "sample_limit": 32
+    }
+  ],
+  "git_branch": "zipcache-v3-quick-results",
+  "git_commit": "c643ae0",
+  "git_describe": "c643ae0"
+}
