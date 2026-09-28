@@ -1,0 +1,45 @@
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-14|16:05:17][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B', tp_info=DistributedInfo(rank=0, size=1), dtype=torch.bfloat16, max_running_req=8, attention_backend='auto', moe_backend='auto', cuda_graph_bs=None, cuda_graph_max_bs=None, page_size=1, memory_ratio=0.52, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=None, num_page_override=None, max_extend_tokens=4096, cache_type='radix', offline_mode=False, _unique_suffix='.pid=44636', server_host='127.0.0.1', server_port=30000, num_tokenizer=0, silent_output=False)
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-14|16:05:20|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+[1m[2026-09-14|16:05:20|core|rank=0][0m [32mINFO    [0m Auto-selected attention backend: fi
+Process minisgl-TP0-scheduler:
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/tmp/minisgl-bench-v3m_zuny/main/python/minisgl/server/launch.py", line 38, in _run_scheduler
+    scheduler = Scheduler(args)
+                ^^^^^^^^^^^^^^^
+  File "/tmp/minisgl-bench-v3m_zuny/main/python/minisgl/scheduler/scheduler.py", line 75, in __init__
+    self.engine = Engine(config)
+                  ^^^^^^^^^^^^^^
+  File "/tmp/minisgl-bench-v3m_zuny/main/python/minisgl/engine/engine.py", line 78, in __init__
+    self.tp_cpu_group = self._init_communication(config)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/minisgl-bench-v3m_zuny/main/python/minisgl/engine/engine.py", line 174, in _init_communication
+    torch.distributed.init_process_group(
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/torch/distributed/c10d_logger.py", line 81, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/torch/distributed/c10d_logger.py", line 95, in wrapper
+    func_return = func(*args, **kwargs)
+                  ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/torch/distributed/distributed_c10d.py", line 1762, in init_process_group
+    store, rank, world_size = next(rendezvous_iterator)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/torch/distributed/rendezvous.py", line 230, in _tcp_rendezvous_handler
+    store = _create_c10d_store(
+            ^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/torch/distributed/rendezvous.py", line 198, in _create_c10d_store
+    return TCPStore(
+           ^^^^^^^^^
+torch.distributed.DistNetworkError: The server socket has failed to listen on any local network address. port: 30001, useIpv6: false, code: -98, name: EADDRINUSE, message: address already in use
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 3 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

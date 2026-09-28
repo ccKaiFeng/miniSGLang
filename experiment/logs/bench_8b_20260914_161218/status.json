@@ -1,0 +1,6 @@
+{
+  "status": "running",
+  "completed": [],
+  "model": "/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B",
+  "isolation": "fresh_server_per_workload"
+}

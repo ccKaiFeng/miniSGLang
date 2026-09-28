@@ -1,0 +1,12 @@
+Running main_public_shared_prefix_serial; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_160513/main_public_shared_prefix_serial
+Benchmark failed: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_160513
+Traceback (most recent call last):
+  File "/root/autodl-tmp/miniSGLang/experiment/scripts/run_zipcache_benchmark.py", line 306, in <module>
+    main()
+  File "/root/autodl-tmp/miniSGLang/experiment/scripts/run_zipcache_benchmark.py", line 290, in main
+    run_workload(args, source, meta, directory / stage, name, limit, expected, pool)
+  File "/root/autodl-tmp/miniSGLang/experiment/scripts/run_zipcache_benchmark.py", line 158, in run_workload
+    check_server(server, server_log)
+  File "/root/autodl-tmp/miniSGLang/experiment/scripts/run_zipcache_benchmark.py", line 59, in check_server
+    raise RuntimeError(f"Server exception detected; see {log}")
+RuntimeError: Server exception detected; see /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_160513/main_public_shared_prefix_serial/server.log

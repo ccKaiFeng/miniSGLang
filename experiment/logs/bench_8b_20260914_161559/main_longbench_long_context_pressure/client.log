@@ -1,0 +1,71 @@
+
+===== Running longbench_long_context_pressure (main_longbench_long_context_pressure) =====
+[1/32] long_context_qasper_0000_r0 ok
+[2/32] long_context_qasper_0001_r0 ok
+[3/32] long_context_hotpotqa_0000_r0 ok
+[4/32] long_context_hotpotqa_0005_r0 ok
+[5/32] long_context_hotpotqa_0001_r0 ok
+[6/32] long_context_hotpotqa_0013_r0 ok
+[7/32] long_context_qasper_0002_r0 ok
+[8/32] long_context_hotpotqa_0014_r0 ok
+[9/32] long_context_hotpotqa_0006_r0 ok
+[10/32] long_context_hotpotqa_0003_r0 ok
+[11/32] long_context_hotpotqa_0002_r0 ok
+[12/32] long_context_hotpotqa_0016_r0 ok
+[13/32] long_context_hotpotqa_0004_r0 ok
+[14/32] long_context_hotpotqa_0007_r0 ok
+[15/32] long_context_hotpotqa_0009_r0 ok
+[16/32] long_context_hotpotqa_0008_r0 ok
+[17/32] long_context_hotpotqa_0011_r0 ok
+[18/32] long_context_hotpotqa_0012_r0 ok
+[19/32] long_context_hotpotqa_0015_r0 ok
+[20/32] long_context_2wikimqa_0002_r0 ok
+[21/32] long_context_hotpotqa_0017_r0 ok
+[22/32] long_context_2wikimqa_0001_r0 ok
+[23/32] long_context_hotpotqa_0010_r0 ok
+[24/32] long_context_2wikimqa_0000_r0 ok
+[25/32] long_context_2wikimqa_0005_r0 ok
+[26/32] long_context_passage_retrieval_en_0000_r0 ok
+[27/32] long_context_passage_retrieval_en_0001_r0 ok
+[28/32] long_context_qasper_0003_r0 ok
+[29/32] long_context_passage_retrieval_en_0004_r0 ok
+[30/32] long_context_passage_retrieval_en_0002_r0 ok
+[31/32] long_context_2wikimqa_0004_r0 ok
+[32/32] long_context_2wikimqa_0003_r0 ok
+{
+  "num_requests": 32,
+  "num_ok": 32,
+  "num_failed": 0,
+  "total_wall_time_s": 30.576048135757446,
+  "request_throughput_rps": 1.046570827528797,
+  "output_chunk_throughput_cps": 266.87556101984325,
+  "output_chunks": 8160,
+  "ttft_avg_s": 2.203720800462179,
+  "ttft_p50_s": 2.30611540004611,
+  "ttft_p90_s": 3.4438583999872208,
+  "ttft_p99_s": 3.9090868830680847,
+  "e2e_avg_s": 7.642115903669037,
+  "e2e_p50_s": 7.816947188228369,
+  "e2e_p90_s": 7.943783797323704,
+  "e2e_p99_s": 7.953736960887909,
+  "tpot_avg_s": 0.021411004343334088,
+  "tpot_p50_s": 0.021819781101360097,
+  "tpot_p90_s": 0.026803922729464028,
+  "tpot_p99_s": 0.029059206494900184,
+  "finish_reasons": {
+    "stop": 32
+  },
+  "num_reached_max_tokens": 0,
+  "gpu_samples": 45,
+  "gpu_memory_used_mb_min": 42841,
+  "gpu_memory_used_mb_max": 43245,
+  "gpu_memory_used_mb_avg": 43235.26666666667
+}
+
+===== Parsing ZipCache stats =====
+{
+  "num_stats": 0,
+  "message": "No [ZipCacheV1]/[ZipCacheV2]/[ZipCacheV3]/[ZipCacheV4] stats found."
+}
+
+All experiments finished. Report: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/main_longbench_long_context_pressure/20260914_162134_main_longbench_long_context_pressure/report.md

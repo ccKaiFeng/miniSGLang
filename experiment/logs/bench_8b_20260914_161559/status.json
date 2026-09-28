@@ -1,0 +1,15 @@
+{
+  "status": "complete",
+  "completed": [
+    "main_public_shared_prefix_serial",
+    "main_longbench_long_context_pressure",
+    "main_gsm8k_public_correctness",
+    "zipcache_13600mb_public_shared_prefix_serial",
+    "zipcache_13600mb_longbench_long_context_pressure",
+    "zipcache_13600mb_gsm8k_public_correctness",
+    "zipcache_3400mb_public_shared_prefix_serial",
+    "zipcache_6800mb_public_shared_prefix_serial"
+  ],
+  "model": "/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B",
+  "isolation": "fresh_server_per_workload"
+}

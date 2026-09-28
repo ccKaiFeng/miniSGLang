@@ -1,0 +1,9 @@
+Running main_public_shared_prefix_serial; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/main_public_shared_prefix_serial
+Running main_longbench_long_context_pressure; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/main_longbench_long_context_pressure
+Running main_gsm8k_public_correctness; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/main_gsm8k_public_correctness
+Running zipcache_13600mb_public_shared_prefix_serial; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_13600mb_public_shared_prefix_serial
+Running zipcache_13600mb_longbench_long_context_pressure; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_13600mb_longbench_long_context_pressure
+Running zipcache_13600mb_gsm8k_public_correctness; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_13600mb_gsm8k_public_correctness
+Running zipcache_3400mb_public_shared_prefix_serial; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_3400mb_public_shared_prefix_serial
+Running zipcache_6800mb_public_shared_prefix_serial; logs: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_6800mb_public_shared_prefix_serial
+Benchmark complete: /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559

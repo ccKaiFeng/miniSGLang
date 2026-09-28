@@ -1,0 +1,8 @@
+$ /root/miniconda3/envs/minisgl-ZipCache/bin/python /root/autodl-tmp/miniSGLang/experiment/parse_zipcache_log.py --log /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/main_public_shared_prefix_serial/server.log --output /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/main_public_shared_prefix_serial/20260914_161626_main_public_shared_prefix_serial/zipcache_stats_summary.json
+
+{
+  "num_stats": 0,
+  "message": "No [ZipCacheV1]/[ZipCacheV2]/[ZipCacheV3]/[ZipCacheV4] stats found."
+}
+
+[exit_code] 0

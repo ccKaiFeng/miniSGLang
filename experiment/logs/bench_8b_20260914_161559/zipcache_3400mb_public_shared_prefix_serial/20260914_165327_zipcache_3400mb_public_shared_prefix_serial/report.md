@@ -1,0 +1,93 @@
+# miniSGLang Experiment Report: zipcache_3400mb_public_shared_prefix_serial
+
+- mode: `zipcache_3400mb_public_shared_prefix_serial`
+- base_url: `http://127.0.0.1:31000`
+- run_dir: `/root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_3400mb_public_shared_prefix_serial/20260914_165327_zipcache_3400mb_public_shared_prefix_serial`
+- started_at: `2026-09-14 16:53:27`
+- git_branch: `working-tree`
+- git_commit: `b3ece67ca5cd4682f7fe929a5cad93b9bc169780`
+
+## Server Check
+
+```json
+{
+  "ok": true,
+  "url": "http://127.0.0.1:31000/v1",
+  "latency_s": 0.008431047201156616,
+  "response": "{\"status\":\"ok\"}"
+}
+```
+
+## Experiments
+
+| experiment | ok/total | maxed | rps | chunks/s | ttft avg | ttft p90 | e2e avg | tpot avg | gpu max MB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| public_shared_prefix_serial | 192/192 | 0 | 0.541 | 68.7 | 0.3449 | 0.4404 | 1.848 | 0.01193 | 33975 |
+
+## Result Files
+
+- `public_shared_prefix_serial` results: `/root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_3400mb_public_shared_prefix_serial/20260914_165327_zipcache_3400mb_public_shared_prefix_serial/public_shared_prefix_serial.jsonl`
+- `public_shared_prefix_serial` summary: `/root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_3400mb_public_shared_prefix_serial/20260914_165327_zipcache_3400mb_public_shared_prefix_serial/public_shared_prefix_serial_summary.json`
+- `public_shared_prefix_serial` log: `/root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_161559/zipcache_3400mb_public_shared_prefix_serial/20260914_165327_zipcache_3400mb_public_shared_prefix_serial/public_shared_prefix_serial.log`
+
+## ZipCache Stats
+
+```json
+{
+  "num_stats": 33,
+  "versions": [
+    "ZipCacheV3"
+  ],
+  "last": {
+    "num_demotions": 2,
+    "num_demote_failures": 0,
+    "num_compressed_entries": 2,
+    "num_compressed_hits": 0,
+    "num_restore_attempts": 0,
+    "num_restore_success": 0,
+    "num_restore_fallback": 0,
+    "num_compressed_freed": 0,
+    "num_temporary_restore_pages": 0,
+    "num_restore_pages_released": 0,
+    "num_restore_rejected_small_prefix": 0,
+    "original_estimated_bytes": 738902016,
+    "compressed_estimated_bytes_4bit": 162219456,
+    "compressed_storage_bytes": 162219456,
+    "active_original_estimated_bytes": 738902016,
+    "active_compressed_estimated_bytes_4bit": 162219456,
+    "active_compressed_storage_bytes": 162219456,
+    "last_estimated_compression_ratio": 4.555160142348755,
+    "last_storage_compression_ratio": 4.555160142348755,
+    "num_demote_rejected_pool_full": 0,
+    "active_estimated_compression_ratio": 4.55495311240595,
+    "active_storage_compression_ratio": 4.55495311240595,
+    "gpu_memory_allocated_bytes": 33985393152,
+    "gpu_memory_reserved_bytes": 35055992832,
+    "gpu_max_memory_allocated_bytes": 34388165120,
+    "gpu_max_memory_reserved_bytes": 35055992832,
+    "compressed_pool_capacity_bytes": 3565158400,
+    "compressed_pool_used_bytes": 162219456,
+    "compressed_pool_free_bytes": 3402938944,
+    "compressed_pool_utilization": 0.045501332002527574,
+    "compressed_pool_q_used_bytes": 147787776,
+    "compressed_pool_q4_used_bytes": 110850048,
+    "compressed_pool_q2_used_bytes": 36937728,
+    "compressed_pool_scale_used_bytes": 11545344,
+    "compressed_pool_ids_used_bytes": 2886336,
+    "compressed_pool_q4_capacity_bytes": 2353004544,
+    "compressed_pool_q2_capacity_bytes": 784334848,
+    "compressed_pool_scale_capacity_bytes": 320864256,
+    "compressed_pool_ids_capacity_bytes": 106954752,
+    "normal_pool_capacity_bytes": 13861011456,
+    "estimated_effective_kv_capacity_bytes": 30100140806.300217,
+    "estimated_capacity_gain_vs_normal_pool": 2.1715688571392677,
+    "_zipcache_version": "ZipCacheV3"
+  },
+  "max_active_compression_ratio": 4.55495311240595,
+  "last_active_compression_ratio": 4.55495311240595,
+  "max_active_original_estimated_bytes": 738902016,
+  "max_active_compressed_estimated_bytes": 162219456,
+  "max_num_compressions_or_demotions": 2,
+  "max_num_decompressions_or_restores": 0
+}
+```

@@ -1,0 +1,7 @@
+{
+  "status": "failed",
+  "completed": [],
+  "model": "/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B",
+  "isolation": "fresh_server_per_workload",
+  "error": "Server exception detected; see /root/autodl-tmp/miniSGLang/experiment/logs/bench_8b_20260914_160513/main_public_shared_prefix_serial/server.log"
+}

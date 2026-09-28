@@ -1,0 +1,70 @@
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-14|16:21:21][0m [32mINFO    [0m Parsed arguments:
+ServerArgs(model_path='/root/autodl-tmp/modelscope-cache/models/Qwen/Qwen3-8B', tp_info=DistributedInfo(rank=0, size=1), dtype=torch.bfloat16, max_running_req=8, attention_backend='auto', moe_backend='auto', cuda_graph_bs=None, cuda_graph_max_bs=None, page_size=1, memory_ratio=0.52, distributed_timeout=60.0, use_dummy_weight=False, use_pynccl=True, max_seq_len_override=None, num_page_override=None, max_extend_tokens=4096, cache_type='radix', offline_mode=False, _unique_suffix='.pid=48495', server_host='127.0.0.1', server_port=31000, num_tokenizer=0, silent_output=False)
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+[1m[2026-09-14|16:21:25|core|rank=0][0m [32mINFO    [0m Auto-selected attention backend: fi
+[1m[2026-09-14|16:21:25|initializer][0m [32mINFO    [0m Tokenize server 0 is ready
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[1m[2026-09-14|16:21:25|core|rank=0][0m [32mINFO    [0m Free memory before loading model: 78.82 GiB
+Loading weights:   0%|          | 0/5 [00:00<?, ?it/s]Loading weights:  20%|██        | 1/5 [00:01<00:07,  1.77s/it]Loading weights:  40%|████      | 2/5 [00:02<00:04,  1.41s/it]Loading weights:  60%|██████    | 3/5 [00:03<00:02,  1.16s/it]Loading weights:  80%|████████  | 4/5 [00:04<00:01,  1.09s/it]Loading weights: 100%|██████████| 5/5 [00:04<00:00,  1.29it/s]Loading weights: 100%|██████████| 5/5 [00:04<00:00,  1.00it/s]
+[1m[2026-09-14|16:21:31|core|rank=0][0m [32mINFO    [0m Allocating 182596 tokens for KV cache, K + V = 25.08 GiB
+[1m[2026-09-14|16:21:31|core|rank=0][0m [32mINFO    [0m Free memory after initialization: 37.71 GiB
+[1m[2026-09-14|16:21:31|core|rank=0][0m [32mINFO    [0m Start capturing CUDA graphs with sizes: [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160]
+[1m[2026-09-14|16:21:31|core|rank=0][0m [32mINFO    [0m Free GPU memory before capturing CUDA graphs: 37.71 GiB
+Preparing for capturing CUDA graphs...:   0%|          | 0/23 [00:00<?, ?batch/s]Capturing graphs: bs = 160 | avail_mem = 37.61 GiB:   0%|          | 0/23 [00:00<?, ?batch/s]Capturing graphs: bs = 160 | avail_mem = 37.61 GiB:   4%|▍         | 1/23 [00:02<00:46,  2.13s/batch]Capturing graphs: bs = 152 | avail_mem = 37.53 GiB:   4%|▍         | 1/23 [00:02<00:46,  2.13s/batch]Capturing graphs: bs = 144 | avail_mem = 37.52 GiB:   4%|▍         | 1/23 [00:02<00:46,  2.13s/batch]Capturing graphs: bs = 136 | avail_mem = 37.52 GiB:   4%|▍         | 1/23 [00:02<00:46,  2.13s/batch]Capturing graphs: bs = 136 | avail_mem = 37.52 GiB:  17%|█▋        | 4/23 [00:02<00:08,  2.30batch/s]Capturing graphs: bs = 128 | avail_mem = 37.52 GiB:  17%|█▋        | 4/23 [00:02<00:08,  2.30batch/s]Capturing graphs: bs = 120 | avail_mem = 37.51 GiB:  17%|█▋        | 4/23 [00:02<00:08,  2.30batch/s]Capturing graphs: bs = 112 | avail_mem = 37.50 GiB:  17%|█▋        | 4/23 [00:02<00:08,  2.30batch/s]Capturing graphs: bs = 104 | avail_mem = 37.50 GiB:  17%|█▋        | 4/23 [00:02<00:08,  2.30batch/s]Capturing graphs: bs = 104 | avail_mem = 37.50 GiB:  35%|███▍      | 8/23 [00:02<00:02,  5.26batch/s]Capturing graphs: bs = 96  | avail_mem = 37.50 GiB:  35%|███▍      | 8/23 [00:02<00:02,  5.26batch/s]Capturing graphs: bs = 88  | avail_mem = 37.49 GiB:  35%|███▍      | 8/23 [00:02<00:02,  5.26batch/s]Capturing graphs: bs = 80  | avail_mem = 37.49 GiB:  35%|███▍      | 8/23 [00:02<00:02,  5.26batch/s]Capturing graphs: bs = 72  | avail_mem = 37.49 GiB:  35%|███▍      | 8/23 [00:02<00:02,  5.26batch/s]Capturing graphs: bs = 72  | avail_mem = 37.49 GiB:  52%|█████▏    | 12/23 [00:02<00:01,  8.66batch/s]Capturing graphs: bs = 64  | avail_mem = 37.48 GiB:  52%|█████▏    | 12/23 [00:02<00:01,  8.66batch/s]Capturing graphs: bs = 56  | avail_mem = 37.48 GiB:  52%|█████▏    | 12/23 [00:02<00:01,  8.66batch/s]Capturing graphs: bs = 48  | avail_mem = 37.47 GiB:  52%|█████▏    | 12/23 [00:02<00:01,  8.66batch/s]Capturing graphs: bs = 40  | avail_mem = 37.47 GiB:  52%|█████▏    | 12/23 [00:02<00:01,  8.66batch/s]Capturing graphs: bs = 40  | avail_mem = 37.47 GiB:  70%|██████▉   | 16/23 [00:02<00:00, 12.47batch/s]Capturing graphs: bs = 32  | avail_mem = 37.46 GiB:  70%|██████▉   | 16/23 [00:02<00:00, 12.47batch/s]Capturing graphs: bs = 24  | avail_mem = 37.46 GiB:  70%|██████▉   | 16/23 [00:02<00:00, 12.47batch/s]Capturing graphs: bs = 16  | avail_mem = 37.46 GiB:  70%|██████▉   | 16/23 [00:02<00:00, 12.47batch/s]Capturing graphs: bs = 8   | avail_mem = 37.45 GiB:  70%|██████▉   | 16/23 [00:02<00:00, 12.47batch/s]Capturing graphs: bs = 8   | avail_mem = 37.45 GiB:  87%|████████▋ | 20/23 [00:02<00:00, 16.58batch/s]Capturing graphs: bs = 4   | avail_mem = 37.45 GiB:  87%|████████▋ | 20/23 [00:02<00:00, 16.58batch/s]Capturing graphs: bs = 2   | avail_mem = 37.44 GiB:  87%|████████▋ | 20/23 [00:02<00:00, 16.58batch/s]Capturing graphs: bs = 1   | avail_mem = 37.44 GiB:  87%|████████▋ | 20/23 [00:02<00:00, 16.58batch/s]Capturing graphs: bs = 1   | avail_mem = 37.44 GiB: 100%|██████████| 23/23 [00:02<00:00,  8.28batch/s]
+[1m[2026-09-14|16:21:33|core|rank=0][0m [32mINFO    [0m Free GPU memory after capturing CUDA graphs: 37.43 GiB
+[1m[2026-09-14|16:21:34|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+[1m[2026-09-14|16:21:34|initializer][0m [32mINFO    [0m Scheduler is ready
+[1m[2026-09-14|16:21:34|FrontendAPI][0m [32mINFO    [0m API server is ready to serve on 127.0.0.1:31000
+INFO:     Started server process [48495]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:31000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:38994 - "GET /v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39008 - "GET /v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39018 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39032 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39044 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39052 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39066 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39072 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39086 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39088 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-14|16:21:42|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:47870 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47838 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47822 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47862 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47852 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47882 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47886 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47890 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-14|16:21:49|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:59982 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59974 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59994 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60000 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60016 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60028 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60040 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60050 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-14|16:21:57|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     127.0.0.1:40796 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40824 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40814 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40802 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40840 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40848 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40850 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40854 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1m[2026-09-14|16:22:05|core|rank=0][0m [32mINFO    [0m Scheduler is idle, waiting for new reqs...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [48495]
+/root/miniconda3/envs/minisgl-ZipCache/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
